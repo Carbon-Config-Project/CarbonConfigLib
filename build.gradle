@@ -2,7 +2,7 @@ plugins {
     id 'java'
 }
 
-group 'carbonconfig'
+group 'carbonconfiglib'
 version '1.0-SNAPSHOT'
 
 repositories {
