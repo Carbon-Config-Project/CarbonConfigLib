@@ -1,0 +1,216 @@
+package carbonconfiglib;
+
+import carbonconfiglib.ConfigEntry.ArrayValue;
+import carbonconfiglib.ConfigEntry.BoolValue;
+import carbonconfiglib.ConfigEntry.DoubleValue;
+import carbonconfiglib.ConfigEntry.IntValue;
+import carbonconfiglib.ConfigEntry.StringValue;
+import it.unimi.dsi.fastutil.chars.Char2ObjectMap;
+import it.unimi.dsi.fastutil.chars.Char2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.StringJoiner;
+
+public class ConfigHandler {
+	private final Path cfgDir;
+	private final Path configFile;
+	private final String subFolder;
+	private final Config config;
+	private final boolean useFileWatcher;
+
+	private final ILogger logger;
+
+	private List<Runnable> loadedListeners = new ObjectArrayList<>();
+	private Char2ObjectMap<IConfigParser> parsers = new Char2ObjectOpenHashMap<>();
+
+	public ConfigHandler(String subFolder, Path baseFolder, ILogger logger, Config config, boolean useAutoReload) {
+		this.config = config;
+
+		String tmp = subFolder.trim().replace("\\\\", "/").replace("\\", "/");
+		if (tmp.endsWith("/")) {
+			tmp = tmp.substring(0, tmp.length() - 1);
+		}
+
+		this.subFolder = tmp;
+		this.logger = logger;
+
+		useFileWatcher = useAutoReload;
+		if(!subFolder.isEmpty())
+		{
+			cfgDir = baseFolder.resolve(subFolder);
+		}
+		else 
+		{
+			cfgDir = baseFolder;
+		}
+		configFile = cfgDir.resolve(config.getName().concat(".cfg"));
+		parsers.put('I', IntValue::parse);
+		parsers.put('D', DoubleValue::parse);
+		parsers.put('B', BoolValue::parse);
+		parsers.put('S', StringValue::parse);
+		parsers.put('A', ArrayValue::parse);
+		parsers.put('E', StringValue::parse);
+	}
+
+	public ConfigHandler(String subFolder, ILogger logger, Config config, boolean useAutoReload) {
+		this(subFolder, FileSystemWatcher.INSTANCE.getBasePath(), logger, config, useAutoReload);
+	}
+
+	public ConfigHandler(String subFolder, Config config, boolean useAutoReload) {
+		this(subFolder, FileSystemWatcher.INSTANCE.getBasePath(), FileSystemWatcher.INSTANCE.getLogger(), config, useAutoReload);
+	}
+
+	public void setAutoSync()
+	{
+		if(!useFileWatcher) FileSystemWatcher.INSTANCE.registerSyncHandler(this);
+	}
+	
+	public ConfigHandler addParser(char id, IConfigParser parser)
+	{
+		parsers.putIfAbsent(id, parser);
+		return this;
+	}
+	
+	public Config getConfig()
+	{
+		return config;
+	}
+
+	public String getSubFolder() {
+		return subFolder;
+	}
+
+	public void init() {
+		try {
+			if (Files.notExists(cfgDir)) {
+				Files.createDirectories(cfgDir);
+			}
+			if (Files.notExists(configFile)) {
+				Files.createFile(configFile);
+				save();
+			} else {
+				load();
+				save();
+			}
+			if (useFileWatcher) {
+				FileSystemWatcher.INSTANCE.registerConfigHandler(configFile, this);
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	public void addLoadedListener(Runnable listener) {
+		loadedListeners.add(listener);
+	}
+	
+	public void onSynced() {
+		for (Runnable r : loadedListeners) {
+			r.run();
+		}
+	}
+	
+	private void handleEntry(ConfigSection currentSection, String line, String comment) {
+		if (currentSection == null) {
+			logger.error("config entry not in section: {}", line);
+			return;
+		}
+		String[] entryData = line.split("[:=]", 3);
+		if (entryData.length != 3) {
+			logger.error("invalid config entry: {}", line);
+			return;
+		}
+		ConfigEntry<?> entry = currentSection.getEntry(entryData[1]);
+		boolean skip = false;
+		if (entry == null) {
+			IConfigParser parser = parsers.get(line.charAt(0));
+			if(parser == null)
+			{
+				logger.error("config entry is not registered and no parser found: {}", line);
+				return;
+			}
+			try
+			{
+				entry = parser.parse(entryData[1], entryData[2], comment);
+				if(entry == null)
+				{
+					logger.error("config entry was able to be parsed: {}", line);
+					return;
+				}
+				skip = true;
+				currentSection.addParsed(entry);
+			} catch (ClassCastException e) {
+				logger.fatal("config entry has wrong type: {}", line);
+			} catch (NumberFormatException e) {
+				logger.fatal("config value is not a valid number: {}", line);
+			}
+		}
+		if(skip)
+		{
+			return;
+		}
+		entry.setComment(comment);
+		try {
+			if (line.charAt(0) == entry.getPrefix())
+				entry.parseValue(entryData[2]);
+			else
+				logger.fatal("config entry has wrong type: {}", line);
+		} catch (ClassCastException e) {
+			logger.fatal("config entry has wrong type: {}", line);
+		} catch (NumberFormatException e) {
+			logger.fatal("config value is not a valid number: {}", line);
+		}
+	}
+
+	public void load() {
+		try {
+			List<String> lines = Files.readAllLines(configFile);
+			ConfigSection currentSection = null;
+			StringJoiner comment = new StringJoiner("\n");
+			for (String line : lines) {
+				line = line.trim();
+				if (line.length() == 0)
+					continue;
+				switch (line.charAt(0)) {
+					case '[':
+						currentSection = config.getSectionRecursive(line.substring(1, line.length() - 1).split("\\."));
+						if (comment.length() > 0)
+							comment = new StringJoiner("\n");
+						break;
+					case '#':
+						comment.add(line.substring(1).trim());
+						break;
+					default:
+						handleEntry(currentSection, line, comment.toString());
+						if (comment.length() > 0)
+							comment = new StringJoiner("\n");
+						break;
+				}
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		for (Runnable r : loadedListeners) {
+			r.run();
+		}
+	}
+
+	public void save() {
+		try (BufferedWriter writer = Files.newBufferedWriter(configFile)) {
+			writer.write(config.serialize());
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	@FunctionalInterface
+	public interface IConfigParser
+	{
+		ConfigEntry<?> parse(String key, String value, String comment);
+	}
+}
