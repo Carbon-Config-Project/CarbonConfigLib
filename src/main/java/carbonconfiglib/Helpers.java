@@ -12,7 +12,15 @@ public class Helpers {
 		Arrays.fill(arr, ' ');
 		return new String(arr);
 	}
-
+	
+	public static String[] validateComments(String[] inputs) {
+		if(inputs == null) return null;
+		for(int i = 0;i<inputs.length;i++) {
+			if(inputs[i] == null) inputs[i] = "";
+		}
+		return inputs;
+	}
+	
 	public static int clamp(int value, int min, int max) {
 		return Math.min(Math.max(value, min), max);
 	}

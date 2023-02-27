@@ -17,21 +17,25 @@ import java.util.Set;
 
 public class FileSystemWatcher {
 	private WatchService watchService;
-	private Map<String, ConfigHandler> configsByName;
-	private Set<ConfigHandler> syncedConfigs;
-	private Map<Path, ConfigHandler> configs;
-	private Map<WatchKey, Path> folders;
-
+	private Map<String, ConfigHandler> configsByName = new Object2ObjectLinkedOpenHashMap<>();
+	private Set<ConfigHandler> syncedConfigs = new ObjectOpenHashSet<>();
+	private Map<Path, ConfigHandler> configs = new Object2ObjectLinkedOpenHashMap<>();
+	private Map<WatchKey, Path> folders = new Object2ObjectLinkedOpenHashMap<>();
+	
+	private boolean wasInit = false;
 	private ILogger logger;
 	private Path basePath;
 	private IConfigChangedListener changedListener;
-
+	
 	public static final FileSystemWatcher INSTANCE = new FileSystemWatcher();
-
-	public void Init(ILogger logger, Path basePath, IConfigChangedListener changedListener) {
-		if (folders != null)
+	
+	private FileSystemWatcher() {
+	}
+	
+	public void init(ILogger logger, Path basePath, IConfigChangedListener changedListener) {
+		if (wasInit)
 			return;
-
+		wasInit = true;
 		this.logger = logger;
 		this.basePath = basePath;
 		this.changedListener = changedListener;
@@ -44,34 +48,25 @@ public class FileSystemWatcher {
 			logger.fatal("WatchService could not be created");
 			logger.fatal(e);
 		}
-
 		watchService = tmp;
-		configsByName = new Object2ObjectLinkedOpenHashMap<>();
-		syncedConfigs = new ObjectOpenHashSet<>();
-		configs = new Object2ObjectLinkedOpenHashMap<>();
-		folders = new Object2ObjectLinkedOpenHashMap<>();
 	}
-
+	
 	public Path getBasePath() {
 		return basePath;
 	}
-
+	
 	public ILogger getLogger() {
 		return logger;
-	}
-
-	private FileSystemWatcher() {
-
 	}
 	
 	public void registerSyncHandler(ConfigHandler handler) {
 		syncedConfigs.add(handler);
 	}
-
+	
 	public void registerConfigHandler(Path configFile, ConfigHandler handler) {
 		configs.putIfAbsent(configFile, handler);
 
-		configsByName.put(handler.getSubFolder() + "/" + handler.getConfig().getName(), handler);
+		configsByName.put(handler.getConfigIdentifer(), handler);
 		if (!folders.containsValue(configFile.getParent())) {
 			try {
 				folders.put(configFile.getParent().register(watchService, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_MODIFY), configFile.getParent());
@@ -81,11 +76,10 @@ public class FileSystemWatcher {
 		}
 	}
 	
-	public ConfigHandler getConfig(String name)
-	{
+	public ConfigHandler getConfig(String name) {
 		return configsByName.get(name);
 	}
-
+	
 	public void processFileSystemEvents() {
 		if (watchService != null) {
 			WatchKey key;
@@ -104,7 +98,7 @@ public class FileSystemWatcher {
 			}
 		}
 	}
-
+	
 	public List<ConfigHandler> getConfigsToSync() {
 		return new ObjectArrayList<>(syncedConfigs);
 	}

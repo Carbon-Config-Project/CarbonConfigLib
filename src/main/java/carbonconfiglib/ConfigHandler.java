@@ -1,5 +1,11 @@
 package carbonconfiglib;
 
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+
 import carbonconfiglib.ConfigEntry.ArrayValue;
 import carbonconfiglib.ConfigEntry.BoolValue;
 import carbonconfiglib.ConfigEntry.DoubleValue;
@@ -8,13 +14,6 @@ import carbonconfiglib.ConfigEntry.StringValue;
 import it.unimi.dsi.fastutil.chars.Char2ObjectMap;
 import it.unimi.dsi.fastutil.chars.Char2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.List;
-import java.util.StringJoiner;
 
 public class ConfigHandler {
 	private final Path cfgDir;
@@ -65,26 +64,26 @@ public class ConfigHandler {
 		this(subFolder, FileSystemWatcher.INSTANCE.getBasePath(), FileSystemWatcher.INSTANCE.getLogger(), config, useAutoReload);
 	}
 
-	public void setAutoSync()
-	{
+	public void setAutoSync() {
 		if(!useFileWatcher) FileSystemWatcher.INSTANCE.registerSyncHandler(this);
 	}
 	
-	public ConfigHandler addParser(char id, IConfigParser parser)
-	{
+	public void addParser(char id, IConfigParser parser) {
 		parsers.putIfAbsent(id, parser);
-		return this;
 	}
 	
-	public Config getConfig()
-	{
+	public Config getConfig() {
 		return config;
 	}
 
 	public String getSubFolder() {
 		return subFolder;
 	}
-
+	
+	public String getConfigIdentifer() {
+		return subFolder + "/" + config.getName();
+	}
+	
 	public void init() {
 		try {
 			if (Files.notExists(cfgDir)) {
@@ -115,7 +114,7 @@ public class ConfigHandler {
 		}
 	}
 	
-	private void handleEntry(ConfigSection currentSection, String line, String comment) {
+	private void handleEntry(ConfigSection currentSection, String line, String[] comment) {
 		if (currentSection == null) {
 			logger.error("config entry not in section: {}", line);
 			return;
@@ -166,12 +165,12 @@ public class ConfigHandler {
 			logger.fatal("config value is not a valid number: {}", line);
 		}
 	}
-
+	
 	public void load() {
 		try {
 			List<String> lines = Files.readAllLines(configFile);
 			ConfigSection currentSection = null;
-			StringJoiner comment = new StringJoiner("\n");
+			List<String> comments = new ObjectArrayList<>();
 			for (String line : lines) {
 				line = line.trim();
 				if (line.length() == 0)
@@ -179,16 +178,15 @@ public class ConfigHandler {
 				switch (line.charAt(0)) {
 					case '[':
 						currentSection = config.getSectionRecursive(line.substring(1, line.length() - 1).split("\\."));
-						if (comment.length() > 0)
-							comment = new StringJoiner("\n");
+						comments.clear();
 						break;
 					case '#':
-						comment.add(line.substring(1).trim());
+						if(line.charAt(1) == '\u200b') break;
+						comments.add(line.substring(1).trim());
 						break;
 					default:
-						handleEntry(currentSection, line, comment.toString());
-						if (comment.length() > 0)
-							comment = new StringJoiner("\n");
+						handleEntry(currentSection, line, comments.toArray(new String[comments.size()]));
+						comments.clear();
 						break;
 				}
 			}
@@ -211,6 +209,6 @@ public class ConfigHandler {
 	@FunctionalInterface
 	public interface IConfigParser
 	{
-		ConfigEntry<?> parse(String key, String value, String comment);
+		ConfigEntry<?> parse(String key, String value, String[] comment);
 	}
 }

@@ -1,24 +1,26 @@
 package carbonconfiglib;
 
-import carbonconfiglib.buffer.IReadBuffer;
-import carbonconfiglib.buffer.IWriteBuffer;
-
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 import java.util.StringJoiner;
+
+import carbonconfiglib.buffer.IReadBuffer;
+import carbonconfiglib.buffer.IWriteBuffer;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 public abstract class ConfigEntry<T> {
 	private String key;
 	private T value;
 	private T defaultValue;
 	private T lastValue;
-	private String comment;
+	private String[] comment;
 	private boolean used = false;
 	private boolean sync = false;
 	private boolean worldReload = false;
 	private boolean gameReload = false;
 
-	public ConfigEntry(String key, T defaultValue, String comment) {
+	public ConfigEntry(String key, T defaultValue, String... comment) {
 		if (Helpers.validateString(key))
 			throw new IllegalArgumentException("ConfigEntry key must not be null, empty or start/end with white spaces");
 		if (key.contains(":") || key.contains("="))
@@ -28,19 +30,15 @@ public abstract class ConfigEntry<T> {
 		this.key = key;
 		this.value = defaultValue;
 		this.defaultValue = defaultValue;
-		this.comment = comment;
+		this.comment = Helpers.validateComments(comment);
 	}
-
-	public ConfigEntry(String key, T defaultValue) {
-		this(key, defaultValue, null);
-	}
-
-	public String getComment() {
+	
+	public String[] getComment() {
 		return comment;
 	}
 
-	public ConfigEntry<T> setComment(String comment) {
-		this.comment = comment;
+	public ConfigEntry<T> setComment(String... comment) {
+		this.comment = Helpers.validateComments(comment);
 		return this;
 	}
 
@@ -58,7 +56,7 @@ public abstract class ConfigEntry<T> {
 	
 	public ConfigEntry<T> set(T value) {
 		if (value != null) {
-			if(sync) lastValue = this.value;
+			if(sync) lastValue = this.value;//TODO This doesn't seem right
 			this.value = value;
 		}
 		return this;
@@ -135,15 +133,26 @@ public abstract class ConfigEntry<T> {
 	protected String serializedValue() {
 		return String.valueOf(value);
 	}
+	
+	public abstract String getLimitations();
 
 	public String serialize(int indentationLevel) {
 		String indentation = '\n' + Helpers.generateIndent(indentationLevel);
 		StringBuilder builder = new StringBuilder();
-		if (comment != null && !comment.isEmpty()) {
+		if (comment != null) {
 			builder.append('\n');
+			for(int i = 0;i<comment.length;i++)
+			{
+				builder.append(indentation);
+				builder.append("# ");
+				builder.append(comment[i].replaceAll("\\R", indentation + "# "));
+			}
+		}
+		String limits = getLimitations();
+		if(limits != null && limits.isEmpty()) {
 			builder.append(indentation);
-			builder.append("# ");
-			builder.append(comment.replaceAll("\\R", indentation + "# "));
+			builder.append("#").append('\u200b').append(" ");
+			builder.append(limits);
 		}
 		builder.append(indentation);
 		builder.append(getPrefix());
@@ -157,12 +166,19 @@ public abstract class ConfigEntry<T> {
 	public abstract void serialize(IWriteBuffer buffer);
 
 	public abstract void deserialize(IReadBuffer buffer);
-
+	
+	public static interface IArrayConfig {
+		public List<String> getEntries();
+		public List<String> getDefaults();
+		public boolean canSet(List<String> entries);
+		public void set(List<String> entries);
+	}
+	
 	public static class IntValue extends ConfigEntry<Integer> {
 		private int min = Integer.MIN_VALUE;
 		private int max = Integer.MAX_VALUE;
 
-		public IntValue(String key, Integer defaultValue, String comment) {
+		public IntValue(String key, Integer defaultValue, String... comment) {
 			super(key, defaultValue, comment);
 		}
 
@@ -198,6 +214,19 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
+		public String getLimitations() {
+			if(min == Integer.MIN_VALUE) {
+				if(max == Integer.MAX_VALUE) return "";
+				return "Range: > "+max;
+			}
+			if(max == Integer.MIN_VALUE) {
+				if(min == Integer.MAX_VALUE) return "";
+				return "Range: < "+min;
+			}
+			return "Range: "+min+" ~ "+max;
+		}
+		
+		@Override
 		public char getPrefix() {
 			return 'I';
 		}
@@ -212,8 +241,7 @@ public abstract class ConfigEntry<T> {
 			set(Integer.parseInt(value));
 		}
 		
-		public static IntValue parse(String key, String value, String comment)
-		{
+		public static IntValue parse(String key, String value, String... comment) {
 			return new IntValue(key, Integer.parseInt(value), comment);
 		}
 
@@ -232,7 +260,7 @@ public abstract class ConfigEntry<T> {
 		private double min = Double.MIN_VALUE;
 		private double max = Double.MAX_VALUE;
 
-		public DoubleValue(String key, Double defaultValue, String comment) {
+		public DoubleValue(String key, Double defaultValue, String... comment) {
 			super(key, defaultValue, comment);
 		}
 
@@ -272,9 +300,21 @@ public abstract class ConfigEntry<T> {
 			return 'D';
 		}
 		
-		public double get()
-		{
+		public double get() {
 			return getValue().doubleValue();
+		}
+		
+		@Override
+		public String getLimitations() {
+			if(min == Double.MIN_VALUE) {
+				if(max == Double.MAX_VALUE) return "";
+				return "Range: > "+max;
+			}
+			if(max == Double.MIN_VALUE) {
+				if(min == Double.MAX_VALUE) return "";
+				return "Range: < "+min;
+			}
+			return "Range: "+min+" ~ "+max;
 		}
 		
 		@Override
@@ -282,8 +322,7 @@ public abstract class ConfigEntry<T> {
 			set(Double.parseDouble(value));
 		}
 		
-		public static DoubleValue parse(String key, String value, String comment)
-		{
+		public static DoubleValue parse(String key, String value, String... comment) {
 			return new DoubleValue(key, Double.parseDouble(value), comment);
 		}
 		
@@ -299,7 +338,7 @@ public abstract class ConfigEntry<T> {
 	}
 
 	public static class BoolValue extends ConfigEntry<Boolean> {
-		public BoolValue(String key, Boolean defaultValue, String comment) {
+		public BoolValue(String key, Boolean defaultValue, String... comment) {
 			super(key, defaultValue, comment);
 		}
 
@@ -307,8 +346,7 @@ public abstract class ConfigEntry<T> {
 			super(key, defaultValue);
 		}
 		
-		public boolean get()
-		{
+		public boolean get() {
 			return getValue().booleanValue();
 		}
 		
@@ -318,12 +356,16 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
+		public String getLimitations() {
+			return "";
+		}
+		
+		@Override
 		public void parseValue(String value) {
 			set(Boolean.parseBoolean(value));
 		}
 		
-		public static BoolValue parse(String key, String value, String comment)
-		{
+		public static BoolValue parse(String key, String value, String... comment) {
 			return new BoolValue(key, Boolean.parseBoolean(value), comment);
 		}
 
@@ -339,7 +381,7 @@ public abstract class ConfigEntry<T> {
 	}
 
 	public static class StringValue extends ConfigEntry<String> {
-		public StringValue(String key, String defaultValue, String comment) {
+		public StringValue(String key, String defaultValue, String... comment) {
 			super(key, defaultValue, comment);
 		}
 
@@ -357,12 +399,16 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
+		public String getLimitations() {
+			return "";
+		}
+		
+		@Override
 		public void parseValue(String value) {
 			set(value);
 		}
 		
-		public static StringValue parse(String key, String value, String comment)
-		{
+		public static StringValue parse(String key, String value, String... comment) {
 			return new StringValue(key, value, comment);
 		}
 
@@ -377,8 +423,8 @@ public abstract class ConfigEntry<T> {
 		}
 	}
 
-	public static class ArrayValue extends ConfigEntry<String[]> {
-		public ArrayValue(String key, String[] defaultValue, String comment) {
+	public static class ArrayValue extends ConfigEntry<String[]> implements IArrayConfig {
+		public ArrayValue(String key, String[] defaultValue, String... comment) {
 			super(key, defaultValue, comment);
 		}
 
@@ -399,11 +445,35 @@ public abstract class ConfigEntry<T> {
 			return 'A';
 		}
 		
-		public String[] get()
-		{
+		public String[] get() {
 			return getValue();
 		}
 		
+		@Override
+		public String getLimitations() {
+			return "";
+		}
+		
+		@Override
+		public List<String> getEntries() {
+			return new ObjectArrayList<>(getValue());
+		}
+
+		@Override
+		public List<String> getDefaults() {
+			return ObjectArrayList.wrap(getValue());
+		}
+
+		@Override
+		public boolean canSet(List<String> entries) {
+			return true;
+		}
+
+		@Override
+		public void set(List<String> entries) {
+			set(entries.toArray(new String[entries.size()]));
+		}
+
 		@Override
 		public void parseValue(String value) {
 			set(value.isEmpty() ? new String[]{} : value.split(","));
@@ -418,8 +488,7 @@ public abstract class ConfigEntry<T> {
 			return joiner.toString();
 		}
 		
-		public static ArrayValue parse(String key, String value, String comment)
-		{
+		public static ArrayValue parse(String key, String value, String... comment) {
 			return new ArrayValue(key, value.isEmpty() ? new String[]{} : value.split(","), comment);
 		}
 
@@ -444,32 +513,16 @@ public abstract class ConfigEntry<T> {
 	public static class EnumValue<E extends Enum<E>> extends ConfigEntry<E> {
 		private Class<E> enumClass;
 
-		public EnumValue(String key, E defaultValue, Class<E> enumClass, String comment) {
+		public EnumValue(String key, E defaultValue, Class<E> enumClass, String... comment) {
 			super(key, defaultValue, comment);
 			this.enumClass = enumClass;
-			setupComment();
 		}
 
 		public EnumValue(String key, E defaultValue, Class<E> enumClass) {
 			super(key, defaultValue);
 			this.enumClass = enumClass;
-			setupComment();
 		}
-
-		private void setupComment() {
-			String generated = "Must be one of " + Arrays.toString(enumClass.getEnumConstants());
-			String comment = getComment();
-			if (comment == null || comment.isEmpty()) {
-				setComment(generated);
-			} else {
-				if (comment.endsWith(".")) {
-					setComment(comment + " " + generated);
-				} else {
-					setComment(comment + ". " + generated);
-				}
-			}
-		}
-
+		
 		@Override
 		public char getPrefix() {
 			return 'E';
@@ -480,16 +533,20 @@ public abstract class ConfigEntry<T> {
 			return enumClass.isInstance(value);
 		}
 		
-		public E get()
-		{
+		public E get() {
 			return getValue();
+		}
+		
+		@Override
+		public String getLimitations() {
+			return "Must be one of " + Arrays.toString(enumClass.getEnumConstants());
 		}
 		
 		@Override
 		public void parseValue(String value) {
 			set(Enum.valueOf(enumClass, value));
 		}
-
+		
 		@Override
 		public void serialize(IWriteBuffer buffer) {
 			buffer.writeEnum(get());
