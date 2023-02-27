@@ -25,20 +25,20 @@ public class FileSystemWatcher {
 	private boolean wasInit = false;
 	private ILogger logger;
 	private Path basePath;
-	private IConfigChangedListener changedListener;
+	private IConfigChangeListener changeListener;
 	
 	public static final FileSystemWatcher INSTANCE = new FileSystemWatcher();
 	
 	private FileSystemWatcher() {
 	}
 	
-	public void init(ILogger logger, Path basePath, IConfigChangedListener changedListener) {
+	public void init(ILogger logger, Path basePath, IConfigChangeListener changedListener) {
 		if (wasInit)
 			return;
 		wasInit = true;
 		this.logger = logger;
 		this.basePath = basePath;
-		this.changedListener = changedListener;
+		this.changeListener = changedListener;
 
 		WatchService tmp;
 		try {
@@ -64,8 +64,11 @@ public class FileSystemWatcher {
 	}
 	
 	public void registerConfigHandler(Path configFile, ConfigHandler handler) {
-		configs.putIfAbsent(configFile, handler);
-
+		if(configs.putIfAbsent(configFile, handler) != null) {
+			logger.warn("tried to register a config that already registered at {} path", configFile);
+			return;
+		}
+		
 		configsByName.put(handler.getConfigIdentifer(), handler);
 		if (!folders.containsValue(configFile.getParent())) {
 			try {
@@ -74,6 +77,7 @@ public class FileSystemWatcher {
 				logger.fatal("could not register WatchService for directory {}", configFile.getParent());
 			}
 		}
+		if(changeListener != null) changeListener.onConfigAdded(handler);
 	}
 	
 	public ConfigHandler getConfig(String name) {
@@ -88,8 +92,8 @@ public class FileSystemWatcher {
 					ConfigHandler handler = configs.get(folders.get(key).resolve(((Path) event.context()).getFileName()));
 					if (handler != null) {
 						handler.load();
-						if (changedListener != null && syncedConfigs.contains(handler)) {
-							changedListener.onConfigChanged(handler);
+						if (changeListener != null && syncedConfigs.contains(handler)) {
+							changeListener.onConfigChanged(handler);
 						}
 					}
 
