@@ -64,6 +64,7 @@ public class FileSystemWatcher {
 	}
 	
 	public void registerConfigHandler(Path configFile, ConfigHandler handler) {
+		//TODO wir müssen etwas finden damit was der wenn die config noch nicht geladen wurde wegen dependency sorting. Vllt eine "Queue" die abgearbeitet wird wenn die library geladen wurde.
 		if(configs.putIfAbsent(configFile, handler) != null) {
 			logger.warn("tried to register a config that already registered at {} path", configFile);
 			return;
