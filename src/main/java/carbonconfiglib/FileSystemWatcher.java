@@ -1,9 +1,5 @@
 package carbonconfiglib;
 
-import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
-
 import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
@@ -11,9 +7,16 @@ import java.nio.file.StandardWatchEventKinds;
 import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
+import java.util.AbstractMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.LinkedBlockingQueue;
+
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
 public class FileSystemWatcher {
 	private WatchService watchService;
@@ -21,6 +24,7 @@ public class FileSystemWatcher {
 	private Set<ConfigHandler> syncedConfigs = new ObjectOpenHashSet<>();
 	private Map<Path, ConfigHandler> configs = new Object2ObjectLinkedOpenHashMap<>();
 	private Map<WatchKey, Path> folders = new Object2ObjectLinkedOpenHashMap<>();
+	private Queue<Map.Entry<Path, ConfigHandler>> preInitQueue = new LinkedBlockingQueue<>();
 	
 	private boolean wasInit = false;
 	private ILogger logger;
@@ -49,6 +53,10 @@ public class FileSystemWatcher {
 			logger.fatal(e);
 		}
 		watchService = tmp;
+		while(!preInitQueue.isEmpty()) {
+			Map.Entry<Path, ConfigHandler> entry = preInitQueue.poll();
+			registerConfigHandler(entry.getKey(), entry.getValue());
+		}
 	}
 	
 	public Path getBasePath() {
@@ -61,16 +69,20 @@ public class FileSystemWatcher {
 	
 	public void registerSyncHandler(ConfigHandler handler) {
 		syncedConfigs.add(handler);
+		configsByName.putIfAbsent(handler.getConfigIdentifer(), handler);
 	}
 	
 	public void registerConfigHandler(Path configFile, ConfigHandler handler) {
-		//TODO wir müssen etwas finden damit was der wenn die config noch nicht geladen wurde wegen dependency sorting. Vllt eine "Queue" die abgearbeitet wird wenn die library geladen wurde.
+		if(!wasInit) {
+			preInitQueue.add(new AbstractMap.SimpleEntry<>(configFile, handler));
+			return;
+		}
 		if(configs.putIfAbsent(configFile, handler) != null) {
 			logger.warn("tried to register a config that already registered at {} path", configFile);
 			return;
 		}
 		
-		configsByName.put(handler.getConfigIdentifer(), handler);
+		configsByName.putIfAbsent(handler.getConfigIdentifer(), handler);
 		if (!folders.containsValue(configFile.getParent())) {
 			try {
 				folders.put(configFile.getParent().register(watchService, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_MODIFY), configFile.getParent());

@@ -20,14 +20,14 @@ public class ConfigHandler {
 	private final Path configFile;
 	private final String subFolder;
 	private final Config config;
-	private final boolean useFileWatcher;
+	private final AutomationType setting;
 
 	private final ILogger logger;
 
 	private List<Runnable> loadedListeners = new ObjectArrayList<>();
 	private Char2ObjectMap<IConfigParser> parsers = new Char2ObjectOpenHashMap<>();
-
-	public ConfigHandler(String subFolder, Path baseFolder, ILogger logger, Config config, boolean useAutoReload) {
+	
+	public ConfigHandler(String subFolder, Path baseFolder, ILogger logger, Config config, AutomationType setting) {
 		this.config = config;
 
 		String tmp = subFolder.trim().replace("\\\\", "/").replace("\\", "/");
@@ -38,7 +38,7 @@ public class ConfigHandler {
 		this.subFolder = tmp;
 		this.logger = logger;
 
-		useFileWatcher = useAutoReload;
+		this.setting = setting;
 		if(!subFolder.isEmpty())
 		{
 			cfgDir = baseFolder.resolve(subFolder);
@@ -56,16 +56,16 @@ public class ConfigHandler {
 		parsers.put('E', StringValue::parse);
 	}
 
-	public ConfigHandler(String subFolder, ILogger logger, Config config, boolean useAutoReload) {
-		this(subFolder, FileSystemWatcher.INSTANCE.getBasePath(), logger, config, useAutoReload);
+	public ConfigHandler(String subFolder, ILogger logger, Config config, AutomationType setting) {
+		this(subFolder, FileSystemWatcher.INSTANCE.getBasePath(), logger, config, setting);
 	}
 
-	public ConfigHandler(String subFolder, Config config, boolean useAutoReload) {
-		this(subFolder, FileSystemWatcher.INSTANCE.getBasePath(), FileSystemWatcher.INSTANCE.getLogger(), config, useAutoReload);
+	public ConfigHandler(String subFolder, Config config, AutomationType setting) {
+		this(subFolder, FileSystemWatcher.INSTANCE.getBasePath(), FileSystemWatcher.INSTANCE.getLogger(), config, setting);
 	}
-
-	public void setAutoSync() {
-		if(!useFileWatcher) FileSystemWatcher.INSTANCE.registerSyncHandler(this);
+	
+	public ConfigHandler(Config config, AutomationType setting) {
+		this("", config, setting);
 	}
 	
 	public void addParser(char id, IConfigParser parser) {
@@ -96,7 +96,10 @@ public class ConfigHandler {
 				load();
 				save();
 			}
-			if (useFileWatcher) {
+			if(setting.isAutoSync()) {
+				FileSystemWatcher.INSTANCE.registerSyncHandler(this);
+			}
+			if (setting.isAutoReload()) {
 				FileSystemWatcher.INSTANCE.registerConfigHandler(configFile, this);
 			}
 		} catch (IOException e) {
