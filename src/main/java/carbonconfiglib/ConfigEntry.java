@@ -136,7 +136,7 @@ public abstract class ConfigEntry<T> {
 	
 	public abstract String getLimitations();
 
-	public String serialize(int indentationLevel) {
+	public final String serialize(int indentationLevel) {
 		String indentation = '\n' + Helpers.generateIndent(indentationLevel);
 		StringBuilder builder = new StringBuilder();
 		if (comment != null) {
@@ -149,7 +149,7 @@ public abstract class ConfigEntry<T> {
 			}
 		}
 		String limits = getLimitations();
-		if(limits != null && limits.isEmpty()) {
+		if(limits != null && !limits.isEmpty()) {
 			builder.append(indentation);
 			builder.append("#").append('\u200b').append(" ");
 			builder.append(limits);
@@ -159,7 +159,14 @@ public abstract class ConfigEntry<T> {
 		builder.append(':');
 		builder.append(key);
 		builder.append('=');
-		builder.append(serializedValue());
+		if(this instanceof IArrayConfig) {
+			String indent = "\n"+Helpers.generateIndent(indentationLevel+1);
+			builder.append(" < ").append(indent).append(serializedValue().replaceAll("\\R", indent));
+			builder.append(indentation).append(">");
+		}
+		else {
+			builder.append(serializedValue());
+		}
 		return builder.toString();
 	}
 
@@ -217,11 +224,11 @@ public abstract class ConfigEntry<T> {
 		public String getLimitations() {
 			if(min == Integer.MIN_VALUE) {
 				if(max == Integer.MAX_VALUE) return "";
-				return "Range: > "+max;
+				return "Range: < "+max;
 			}
-			if(max == Integer.MIN_VALUE) {
-				if(min == Integer.MAX_VALUE) return "";
-				return "Range: < "+min;
+			if(max == Integer.MAX_VALUE) {
+				if(min == Integer.MIN_VALUE) return "";
+				return "Range: > "+min;
 			}
 			return "Range: "+min+" ~ "+max;
 		}
@@ -308,11 +315,11 @@ public abstract class ConfigEntry<T> {
 		public String getLimitations() {
 			if(min == Double.MIN_VALUE) {
 				if(max == Double.MAX_VALUE) return "";
-				return "Range: > "+max;
+				return "Range: < "+max;
 			}
-			if(max == Double.MIN_VALUE) {
-				if(min == Double.MAX_VALUE) return "";
-				return "Range: < "+min;
+			if(max == Double.MAX_VALUE) {
+				if(min == Double.MIN_VALUE) return "";
+				return "Range: > "+min;
 			}
 			return "Range: "+min+" ~ "+max;
 		}
@@ -476,12 +483,12 @@ public abstract class ConfigEntry<T> {
 
 		@Override
 		public void parseValue(String value) {
-			set(value.isEmpty() ? new String[]{} : value.split(","));
+			set(value.isEmpty() ? new String[]{} : Helpers.trimArray(value.split(",")));
 		}
-
+		
 		@Override
 		protected String serializedValue() {
-			StringJoiner joiner = new StringJoiner(",");
+			StringJoiner joiner = new StringJoiner(", \n");
 			for (String s : get()) {
 				joiner.add(s);
 			}
@@ -489,7 +496,7 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		public static ArrayValue parse(String key, String value, String... comment) {
-			return new ArrayValue(key, value.isEmpty() ? new String[]{} : value.split(","), comment);
+			return new ArrayValue(key, value.isEmpty() ? new String[]{} : Helpers.trimArray(value.split(",")), comment);
 		}
 
 		@Override

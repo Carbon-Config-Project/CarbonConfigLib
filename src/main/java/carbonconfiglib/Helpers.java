@@ -21,6 +21,13 @@ public class Helpers {
 		return inputs;
 	}
 	
+	public static String[] trimArray(String[] array) {
+		for(int i = 0,m=array.length;i<m;i++) {
+			array[i] = array[i].trim();
+		}
+		return array;
+	}
+	
 	public static int clamp(int value, int min, int max) {
 		return Math.min(Math.max(value, min), max);
 	}

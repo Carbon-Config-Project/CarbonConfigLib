@@ -104,8 +104,7 @@ public class ConfigSection {
 		return add(new EnumValue<>(key, value, enumClass));
 	}
 	
-	public ConfigSection addSubSection(String name)
-	{
+	public ConfigSection addSubSection(String name) {
 		ConfigSection subSection = subSections.get(name);
 		if(subSection == null)
 		{

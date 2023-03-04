@@ -84,7 +84,7 @@ public class Config {
 	
 	public String serialize() {
 		if (sections.size() == 0)
-			return null;
+			return "";
 
 		StringJoiner joiner = new StringJoiner("\n\n");
 		Object2ObjectMaps.fastForEach(sections, entry -> {

@@ -7,12 +7,9 @@ import java.nio.file.StandardWatchEventKinds;
 import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
-import java.util.AbstractMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 import java.util.Set;
-import java.util.concurrent.LinkedBlockingQueue;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -24,19 +21,17 @@ public class FileSystemWatcher {
 	private Set<ConfigHandler> syncedConfigs = new ObjectOpenHashSet<>();
 	private Map<Path, ConfigHandler> configs = new Object2ObjectLinkedOpenHashMap<>();
 	private Map<WatchKey, Path> folders = new Object2ObjectLinkedOpenHashMap<>();
-	private Queue<Map.Entry<Path, ConfigHandler>> preInitQueue = new LinkedBlockingQueue<>();
 	
 	private boolean wasInit = false;
 	private ILogger logger;
 	private Path basePath;
 	private IConfigChangeListener changeListener;
 	
-	public static final FileSystemWatcher INSTANCE = new FileSystemWatcher();
-	
-	private FileSystemWatcher() {
+	public FileSystemWatcher(ILogger logger, Path basePath, IConfigChangeListener changedListener) {
+		init(logger, basePath, changedListener);
 	}
 	
-	public void init(ILogger logger, Path basePath, IConfigChangeListener changedListener) {
+	protected void init(ILogger logger, Path basePath, IConfigChangeListener changedListener) {
 		if (wasInit)
 			return;
 		wasInit = true;
@@ -53,10 +48,6 @@ public class FileSystemWatcher {
 			logger.fatal(e);
 		}
 		watchService = tmp;
-		while(!preInitQueue.isEmpty()) {
-			Map.Entry<Path, ConfigHandler> entry = preInitQueue.poll();
-			registerConfigHandler(entry.getKey(), entry.getValue());
-		}
 	}
 	
 	public Path getBasePath() {
@@ -66,6 +57,23 @@ public class FileSystemWatcher {
 	public ILogger getLogger() {
 		return logger;
 	}
+
+	
+	public ConfigHandler createConfig(Config config, AutomationType setting) {
+		return createConfig("", basePath, logger, config, setting);
+	}
+	
+	public ConfigHandler createConfig(String subFolder, Config config, AutomationType setting) {
+		return createConfig(subFolder, basePath, logger, config, setting);
+	}
+	
+	public ConfigHandler createConfig(String subFolder, ILogger logger, Config config, AutomationType setting) {
+		return createConfig(subFolder, basePath, logger, config, setting);
+	}
+	
+	public ConfigHandler createConfig(String subFolder, Path baseFolder, ILogger logger, Config config, AutomationType setting) {
+		return new ConfigHandler(subFolder, baseFolder, logger, config, setting).setOwner(this);
+	}
 	
 	public void registerSyncHandler(ConfigHandler handler) {
 		syncedConfigs.add(handler);
@@ -74,7 +82,6 @@ public class FileSystemWatcher {
 	
 	public void registerConfigHandler(Path configFile, ConfigHandler handler) {
 		if(!wasInit) {
-			preInitQueue.add(new AbstractMap.SimpleEntry<>(configFile, handler));
 			return;
 		}
 		if(configs.putIfAbsent(configFile, handler) != null) {
