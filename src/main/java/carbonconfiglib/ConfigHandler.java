@@ -28,6 +28,10 @@ public final class ConfigHandler {
 	private List<Runnable> loadedListeners = new ObjectArrayList<>();
 	private Char2ObjectMap<IConfigParser> parsers = new Char2ObjectOpenHashMap<>();
 	
+	ConfigHandler(Config config, ConfigSettings settings) {
+		this(settings.getSubFolder(), settings.getBaseFolder(), settings.getLogger(), config, settings.getAutomationType());
+	}
+	
 	ConfigHandler(String subFolder, Path baseFolder, ILogger logger, Config config, AutomationType setting) {
 		this.config = config;
 		String tmp = subFolder.trim().replace("\\\\", "/").replace("\\", "/");

@@ -29,7 +29,7 @@ public class SimpleTest {
 		ARRAY = testSection.addArray("ArrayTest", new String[] {"Test1", "Test2", "Test3"}, "Testing the Array");
 		ENUMS = testSection.addEnum("EnumTest", AutomationType.NONE, AutomationType.class, "Testing the Enum");
 		
-		ConfigHandler handler = WATCHER.createConfig(config, AutomationType.BOTH);
+		ConfigHandler handler = WATCHER.createConfig(config, ConfigSettings.of());
 		handler.init();
 		System.out.println("Generated Config");
 		System.out.println(ARRAY.getEntries());

@@ -57,22 +57,14 @@ public class FileSystemWatcher {
 	public ILogger getLogger() {
 		return logger;
 	}
-
 	
-	public ConfigHandler createConfig(Config config, AutomationType setting) {
-		return createConfig("", basePath, logger, config, setting);
+	public ConfigHandler createConfig(Config config) {
+		return createConfig(config, ConfigSettings.of());
 	}
 	
-	public ConfigHandler createConfig(String subFolder, Config config, AutomationType setting) {
-		return createConfig(subFolder, basePath, logger, config, setting);
-	}
-	
-	public ConfigHandler createConfig(String subFolder, ILogger logger, Config config, AutomationType setting) {
-		return createConfig(subFolder, basePath, logger, config, setting);
-	}
-	
-	public ConfigHandler createConfig(String subFolder, Path baseFolder, ILogger logger, Config config, AutomationType setting) {
-		return new ConfigHandler(subFolder, baseFolder, logger, config, setting).setOwner(this);
+	public ConfigHandler createConfig(Config config, ConfigSettings settings) {
+		settings.withAutomation(AutomationType.BOTH).withBaseFolder(basePath).withSubFolder("").withLogger(logger);
+		return new ConfigHandler(config, settings).setOwner(this);
 	}
 	
 	public void registerSyncHandler(ConfigHandler handler) {
