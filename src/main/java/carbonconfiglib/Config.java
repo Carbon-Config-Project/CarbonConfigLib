@@ -9,6 +9,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
 
+import carbonconfiglib.utils.Helpers;
+import carbonconfiglib.utils.MultilinePolicy;
+
 public class Config {
 	private String name;
 	private Object2ObjectMap<String, ConfigSection> sections = new Object2ObjectLinkedOpenHashMap<>();
@@ -27,13 +30,7 @@ public class Config {
 	}
 	
 	public ConfigSection add(String name) {
-		ConfigSection section = sections.get(name);
-		if(section == null)
-		{
-			section = new ConfigSection(name);
-			sections.put(name, section);
-		}
-		return section.setUsed();
+		return sections.computeIfAbsent(name, ConfigSection::new).setUsed();
 	}
 	
 	public ConfigSection getSection(String name) {
@@ -43,12 +40,7 @@ public class Config {
 	ConfigSection getSectionRecursive(String[] names) {
 		if (names.length == 0)
 			return null;
-		ConfigSection section = sections.get(names[0]);
-		if(section == null)
-		{
-			section = new ConfigSection(names[0]);
-			sections.put(names[0], section);
-		}
+		ConfigSection section = sections.computeIfAbsent(names[0], ConfigSection::new);
 		for (int i = 1; i < names.length && section != null; i++) {
 			section = section.parseSubSection(names[i]);
 		}
@@ -82,13 +74,13 @@ public class Config {
 		return false;
 	}
 	
-	public String serialize() {
+	public String serialize(MultilinePolicy policy) {
 		if (sections.size() == 0)
 			return "";
 
 		StringJoiner joiner = new StringJoiner("\n\n");
 		Object2ObjectMaps.fastForEach(sections, entry -> {
-			String val = entry.getValue().serialize();
+			String val = entry.getValue().serialize(policy);
 			if (val != null)
 				joiner.add(val);
 		});

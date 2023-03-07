@@ -9,6 +9,8 @@ import carbonconfiglib.ConfigEntry.EnumValue;
 import carbonconfiglib.ConfigEntry.IntValue;
 import carbonconfiglib.ConfigEntry.StringValue;
 import carbonconfiglib.base.SimpleLogger;
+import carbonconfiglib.utils.AutomationType;
+import carbonconfiglib.utils.MultilinePolicy;
 
 public class SimpleTest {
 	public static final FileSystemWatcher WATCHER = new FileSystemWatcher(new SimpleLogger(), Paths.get("run"), null);
@@ -26,10 +28,10 @@ public class SimpleTest {
 		INTS = testSection.addInt("IntTest", 0, "Testing the Int").setMax(512);
 		DOUBLES = testSection.addDouble("DoubleTests", 0, "Testing the Double").setMax(512);
 		STRINGS = testSection.addString("StringTest", "Testing my StringValue", "Test the String");
-		ARRAY = testSection.addArray("ArrayTest", new String[] {"Test1", "Test2", "Test3"}, "Testing the Array");
+		ARRAY = testSection.addArray("ArrayTest", new String[] {"Testing1", "Testing2", "Testing3", "Testing4", "Testing5", "Testing6", "Testing7", "Testing8", "Testing9", "Testing10"}, "Testing the Array");
 		ENUMS = testSection.addEnum("EnumTest", AutomationType.NONE, AutomationType.class, "Testing the Enum");
 		
-		ConfigHandler handler = WATCHER.createConfig(config, ConfigSettings.of());
+		ConfigHandler handler = WATCHER.createConfig(config, ConfigSettings.withLinePolicy(MultilinePolicy.ALWAYS_MULTILINE));
 		handler.init();
 		System.out.println("Generated Config");
 		System.out.println(ARRAY.getEntries());

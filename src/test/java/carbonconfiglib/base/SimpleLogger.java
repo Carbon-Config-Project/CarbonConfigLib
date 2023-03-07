@@ -1,6 +1,6 @@
 package carbonconfiglib.base;
 
-import carbonconfiglib.ILogger;
+import carbonconfiglib.api.ILogger;
 
 public class SimpleLogger implements ILogger {
 

@@ -1,20 +1,23 @@
 package carbonconfiglib;
 
+import java.util.List;
+import java.util.Map;
+import java.util.StringJoiner;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import carbonconfiglib.ConfigEntry.ArrayValue;
 import carbonconfiglib.ConfigEntry.BoolValue;
 import carbonconfiglib.ConfigEntry.DoubleValue;
 import carbonconfiglib.ConfigEntry.EnumValue;
 import carbonconfiglib.ConfigEntry.IntValue;
 import carbonconfiglib.ConfigEntry.StringValue;
+import carbonconfiglib.ConfigEntry.TempValue;
+import carbonconfiglib.utils.Helpers;
+import carbonconfiglib.utils.MultilinePolicy;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMaps;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-
-import java.util.List;
-import java.util.Map;
-import java.util.StringJoiner;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class ConfigSection {
 	private String name;
@@ -36,8 +39,8 @@ public class ConfigSection {
 		ConfigEntry<?> presentKey = entries.get(entry.getKey());
 		if(presentKey != null)
 		{
-			if(presentKey instanceof StringValue && entry instanceof EnumValue) entry.parseValue(presentKey.serializedValue());
-			else return presentKey.getPrefix() != entry.getPrefix() ? entry : (T)presentKey.setUsed();
+			if(presentKey instanceof TempValue) entry.parseValue(presentKey.serializedValue(MultilinePolicy.DISABLED));
+			else return (T)(presentKey.getPrefix() != entry.getPrefix() ? entry : presentKey).setUsed();
 		}
 		entries.put(entry.getKey(), entry.setUsed());
 		return entry;
@@ -106,8 +109,7 @@ public class ConfigSection {
 	
 	public ConfigSection addSubSection(String name) {
 		ConfigSection subSection = subSections.get(name);
-		if(subSection == null)
-		{
+		if(subSection == null) {
 			subSection = new ConfigSection(name);
 			subSection.parent = this;
 			subSections.put(name, subSection);
@@ -131,15 +133,14 @@ public class ConfigSection {
 		return subSections.get(name);
 	}
 	
-	ConfigSection parseSubSection(String name)
-	{
-		ConfigSection section = subSections.get(name);
-		if(section == null)
-		{
-			section = new ConfigSection(name);
-			subSections.put(name, section);
+	ConfigSection parseSubSection(String name) {
+		ConfigSection subSection = subSections.get(name);
+		if(subSection == null) {
+			subSection = new ConfigSection(name);
+			subSection.parent = this;
+			subSections.put(name, subSection);
 		}
-		return section;
+		return subSection;
 	}
 	
 	public List<ConfigSection> getChildren() {
@@ -177,13 +178,11 @@ public class ConfigSection {
 		return (parent != null ? parent.getSectionPath() + "." : "") + name;
 	}
 	
-	boolean isUsed()
-	{
+	boolean isUsed() {
 		return used;
 	}
 	
-	ConfigSection setUsed()
-	{
+	ConfigSection setUsed() {
 		used = true;
 		return this;
 	}
@@ -194,17 +193,16 @@ public class ConfigSection {
 				syncedEntries.put(getSectionPath() + "." + entry.getKey(), entry);
 			}
 		}
-
 		for (ConfigSection section : subSections.values()) {
 			section.getSyncedEntries(syncedEntries);
 		}
 	}
 
-	public String serialize() {
-		return serialize(0);
+	public String serialize(MultilinePolicy policy) {
+		return serialize(policy, 0);
 	}
 	
-	public String serialize(int indentationLevel) {
+	public String serialize(MultilinePolicy policy, int indentationLevel) {
 		if (entries.size() == 0 && subSections.size() == 0)
 			return null;
 		AtomicInteger written = new AtomicInteger(0);
@@ -214,23 +212,17 @@ public class ConfigSection {
 		builder.append(']');
 		final int finalIndentationLevel = indentationLevel + 1;
 		Object2ObjectMaps.fastForEach(entries, entry -> {
-			if(entry.getValue().isUsed())
-			{
-				builder.append(entry.getValue().serialize(finalIndentationLevel));
-				written.incrementAndGet();
-			}
+			if(!entry.getValue().isUsed()) return;
+			builder.append(entry.getValue().serialize(policy, finalIndentationLevel));
+			written.incrementAndGet();
 		});
 		StringJoiner joiner = new StringJoiner("\n", entries.size() == 0 || subSections.size() == 0 ? "" : "\n", "");
 		Object2ObjectMaps.fastForEach(subSections, entry -> {
-			if(entry.getValue().isUsed())
-			{
-				String val = entry.getValue().serialize(finalIndentationLevel);
-				if (val != null)
-				{
-					joiner.add(val);
-					written.getAndIncrement();
-				}
-			}
+			if(!entry.getValue().isUsed()) return;
+			String val = entry.getValue().serialize(policy, finalIndentationLevel);
+			if (val == null) return;
+			joiner.add(val);
+			written.getAndIncrement();
 		});
 		builder.append(joiner.toString());
 		return written.get() > 0 ? builder.toString() : null;

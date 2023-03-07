@@ -11,6 +11,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import carbonconfiglib.api.IConfigChangeListener;
+import carbonconfiglib.api.ILogger;
+import carbonconfiglib.utils.AutomationType;
+import carbonconfiglib.utils.MultilinePolicy;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
@@ -63,7 +67,7 @@ public class FileSystemWatcher {
 	}
 	
 	public ConfigHandler createConfig(Config config, ConfigSettings settings) {
-		settings.withAutomation(AutomationType.BOTH).withBaseFolder(basePath).withSubFolder("").withLogger(logger);
+		settings.withAutomation(AutomationType.BOTH).withBaseFolder(basePath).withSubFolder("").withLogger(logger).withMultiline(MultilinePolicy.ALWAYS_MULTILINE);
 		return new ConfigHandler(config, settings).setOwner(this);
 	}
 	
@@ -108,7 +112,6 @@ public class FileSystemWatcher {
 							changeListener.onConfigChanged(handler);
 						}
 					}
-
 				}
 				key.reset();
 			}

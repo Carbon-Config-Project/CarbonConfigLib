@@ -1,4 +1,4 @@
-package carbonconfiglib;
+package carbonconfiglib.api;
 
 public interface ILogger {
 	void debug(String s);

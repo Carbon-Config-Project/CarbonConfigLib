@@ -5,8 +5,10 @@ import java.util.List;
 import java.util.Objects;
 import java.util.StringJoiner;
 
-import carbonconfiglib.buffer.IReadBuffer;
-import carbonconfiglib.buffer.IWriteBuffer;
+import carbonconfiglib.api.buffer.IReadBuffer;
+import carbonconfiglib.api.buffer.IWriteBuffer;
+import carbonconfiglib.utils.Helpers;
+import carbonconfiglib.utils.MultilinePolicy;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 public abstract class ConfigEntry<T> {
@@ -56,7 +58,6 @@ public abstract class ConfigEntry<T> {
 	
 	public ConfigEntry<T> set(T value) {
 		if (value != null) {
-			if(sync) lastValue = this.value;//TODO This doesn't seem right
 			this.value = value;
 		}
 		return this;
@@ -130,13 +131,35 @@ public abstract class ConfigEntry<T> {
 		value = defaultValue;
 	}
 
-	protected String serializedValue() {
+	protected String serializedValue(MultilinePolicy policy) {
 		return String.valueOf(value);
+	}
+	
+	protected String serializeArray(MultilinePolicy policy, String... lines) {
+		if(policy == MultilinePolicy.MULTILINE_IF_TO_LONG) {
+			StringBuilder builder = new StringBuilder();
+			int lineAmount = 0;
+			for(String s : lines) {
+				if(lineAmount > 0 && lineAmount + s.length() > 75) {
+					builder.append('\n');
+					lineAmount = 0;
+				}
+				builder.append(s).append(", ");
+				lineAmount += s.length()+2;
+			}
+			builder.setLength(builder.length()-2);
+			return builder.toString();
+		}
+		StringJoiner joiner = new StringJoiner(policy == MultilinePolicy.ALWAYS_MULTILINE ? ", \n" : ", ");
+		for (String s : lines) {
+			joiner.add(s);
+		}
+		return joiner.toString();
 	}
 	
 	public abstract String getLimitations();
 
-	public final String serialize(int indentationLevel) {
+	public final String serialize(MultilinePolicy policy, int indentationLevel) {
 		String indentation = '\n' + Helpers.generateIndent(indentationLevel);
 		StringBuilder builder = new StringBuilder();
 		if (comment != null) {
@@ -159,13 +182,14 @@ public abstract class ConfigEntry<T> {
 		builder.append(':');
 		builder.append(key);
 		builder.append('=');
-		if(this instanceof IArrayConfig) {
+		String line = serializedValue(policy);
+		if(policy != MultilinePolicy.DISABLED && this instanceof IArrayConfig && line.contains("\n")) {
 			String indent = "\n"+Helpers.generateIndent(indentationLevel+1);
-			builder.append(" < ").append(indent).append(serializedValue().replaceAll("\\R", indent));
+			builder.append(" < ").append(indent).append(line.replaceAll("\\R", indent));
 			builder.append(indentation).append(">");
 		}
 		else {
-			builder.append(serializedValue());
+			builder.append(line);
 		}
 		return builder.toString();
 	}
@@ -238,8 +262,7 @@ public abstract class ConfigEntry<T> {
 			return 'I';
 		}
 		
-		public int get()
-		{
+		public int get() {
 			return getValue().intValue();
 		}
 		
@@ -386,6 +409,16 @@ public abstract class ConfigEntry<T> {
 			set(buffer.readBoolean());
 		}
 	}
+	
+	public static class TempValue extends StringValue {
+		private TempValue(String key, String defaultValue, String[] comment) {
+			super(key, defaultValue, comment);
+		}
+		
+		public static TempValue parse(String key, String value, String... comment) {
+			return new TempValue(key, value, comment);
+		}
+	}
 
 	public static class StringValue extends ConfigEntry<String> {
 		public StringValue(String key, String defaultValue, String... comment) {
@@ -487,12 +520,8 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		protected String serializedValue() {
-			StringJoiner joiner = new StringJoiner(", \n");
-			for (String s : get()) {
-				joiner.add(s);
-			}
-			return joiner.toString();
+		protected String serializedValue(MultilinePolicy policy) {
+			return serializeArray(policy, get());
 		}
 		
 		public static ArrayValue parse(String key, String value, String... comment) {

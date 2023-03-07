@@ -1,4 +1,4 @@
-package carbonconfiglib;
+package carbonconfiglib.utils;
 
 import java.util.Arrays;
 

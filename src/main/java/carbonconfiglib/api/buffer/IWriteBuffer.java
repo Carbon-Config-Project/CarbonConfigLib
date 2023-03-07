@@ -1,4 +1,4 @@
-package carbonconfiglib.buffer;
+package carbonconfiglib.api.buffer;
 
 import java.util.UUID;
 

@@ -11,6 +11,11 @@ import carbonconfiglib.ConfigEntry.BoolValue;
 import carbonconfiglib.ConfigEntry.DoubleValue;
 import carbonconfiglib.ConfigEntry.IntValue;
 import carbonconfiglib.ConfigEntry.StringValue;
+import carbonconfiglib.ConfigEntry.TempValue;
+import carbonconfiglib.api.ILogger;
+import carbonconfiglib.utils.AutomationType;
+import carbonconfiglib.utils.Helpers;
+import carbonconfiglib.utils.MultilinePolicy;
 import it.unimi.dsi.fastutil.chars.Char2ObjectMap;
 import it.unimi.dsi.fastutil.chars.Char2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -21,7 +26,8 @@ public final class ConfigHandler {
 	private final String subFolder;
 	private final Config config;
 	private final AutomationType setting;
-
+	private final MultilinePolicy policy;
+	
 	private final ILogger logger;
 	private FileSystemWatcher owner;
 
@@ -29,10 +35,10 @@ public final class ConfigHandler {
 	private Char2ObjectMap<IConfigParser> parsers = new Char2ObjectOpenHashMap<>();
 	
 	ConfigHandler(Config config, ConfigSettings settings) {
-		this(settings.getSubFolder(), settings.getBaseFolder(), settings.getLogger(), config, settings.getAutomationType());
+		this(settings.getSubFolder(), settings.getBaseFolder(), settings.getLogger(), config, settings.getAutomationType(), settings.getMultilinePolicy());
 	}
 	
-	ConfigHandler(String subFolder, Path baseFolder, ILogger logger, Config config, AutomationType setting) {
+	ConfigHandler(String subFolder, Path baseFolder, ILogger logger, Config config, AutomationType setting, MultilinePolicy policy) {
 		this.config = config;
 		String tmp = subFolder.trim().replace("\\\\", "/").replace("\\", "/");
 		if (tmp.endsWith("/")) {
@@ -40,6 +46,7 @@ public final class ConfigHandler {
 		}
 		this.subFolder = tmp;
 		this.logger = logger;
+		this.policy = policy;
 		this.setting = setting;
 		cfgDir = subFolder != null && !subFolder.isEmpty() ? baseFolder.resolve(subFolder) : baseFolder;
 		configFile = cfgDir.resolve(config.getName().concat(".cfg"));
@@ -48,12 +55,16 @@ public final class ConfigHandler {
 		parsers.put('B', BoolValue::parse);
 		parsers.put('S', StringValue::parse);
 		parsers.put('A', ArrayValue::parse);
-		parsers.put('E', StringValue::parse);
+		parsers.put('E', TempValue::parse);
 	}
 	
 	ConfigHandler setOwner(FileSystemWatcher owner) {
 		this.owner = owner;
 		return this;
+	}
+	
+	public void addTempParser(char id) {
+		addParser(id, TempValue::parse);
 	}
 	
 	public void addParser(char id, IConfigParser parser) {
@@ -139,16 +150,13 @@ public final class ConfigHandler {
 		boolean skip = false;
 		if (entry == null) {
 			IConfigParser parser = parsers.get(line.charAt(0));
-			if(parser == null)
-			{
+			if(parser == null) {
 				logger.error("config entry is not registered and no parser found: {}", line);
 				return extra;
 			}
-			try
-			{
+			try {
 				entry = parser.parse(entryData[1], entryData[2], comment);
-				if(entry == null)
-				{
+				if(entry == null) {
 					logger.error("config entry was able to be parsed: {}", line);
 					return extra;
 				}
@@ -160,16 +168,13 @@ public final class ConfigHandler {
 				logger.fatal("config value is not a valid number: {}", line);
 			}
 		}
-		if(skip)
-		{
+		if(skip) {
 			return extra;
 		}
 		entry.setComment(comment);
 		try {
-			if (line.charAt(0) == entry.getPrefix())
-				entry.parseValue(entryData[2]);
-			else
-				logger.fatal("config entry has wrong type: {}", line);
+			if (line.charAt(0) == entry.getPrefix()) entry.parseValue(entryData[2]);
+			else logger.fatal("config entry has wrong type: {}", line);
 		} catch (ClassCastException e) {
 			logger.fatal("config entry has wrong type: {}", line);
 		} catch (NumberFormatException e) {
@@ -234,7 +239,7 @@ public final class ConfigHandler {
 	
 	public void save() {
 		try (BufferedWriter writer = Files.newBufferedWriter(configFile)) {
-			writer.write(config.serialize());
+			writer.write(config.serialize(policy));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

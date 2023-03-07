@@ -2,8 +2,13 @@ package carbonconfiglib;
 
 import java.nio.file.Path;
 
+import carbonconfiglib.api.ILogger;
+import carbonconfiglib.utils.AutomationType;
+import carbonconfiglib.utils.MultilinePolicy;
+
 public class ConfigSettings {
 	AutomationType type;
+	MultilinePolicy policy;
 	ILogger logger;
 	Path baseFolder;
 	String subFolder;
@@ -30,6 +35,10 @@ public class ConfigSettings {
 		return new ConfigSettings().withSubFolder(subFolder);
 	}
 	
+	public static ConfigSettings withLinePolicy(MultilinePolicy policy) {
+		return new ConfigSettings().withMultiline(policy);
+	}
+	
 	public ConfigSettings withBaseFolder(Path baseFolder) {
 		if(this.baseFolder == null) this.baseFolder = baseFolder;
 		return this;
@@ -37,6 +46,11 @@ public class ConfigSettings {
 	
 	public ConfigSettings withAutomation(AutomationType type) {
 		if(this.type == null) this.type = type;
+		return this;
+	}
+	
+	public ConfigSettings withMultiline(MultilinePolicy policy) {
+		if(this.policy == null) this.policy = policy;
 		return this;
 	}
 	
@@ -64,5 +78,9 @@ public class ConfigSettings {
 	
 	public AutomationType getAutomationType() {
 		return type;
+	}
+	
+	public MultilinePolicy getMultilinePolicy() {
+		return policy;
 	}
 }
