@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.StringJoiner;
 
+import carbonconfiglib.api.IConfigSerializer;
 import carbonconfiglib.api.buffer.IReadBuffer;
 import carbonconfiglib.api.buffer.IWriteBuffer;
 import carbonconfiglib.utils.Helpers;
@@ -592,5 +593,61 @@ public abstract class ConfigEntry<T> {
 		public void deserialize(IReadBuffer buffer) {
 			set(buffer.readEnum(enumClass));
 		}
+	}
+	
+	public static class ParsedValue<T> extends ConfigEntry<T> {
+		IConfigSerializer<T> serializer;
+		
+		public ParsedValue(String key, T defaultValue, IConfigSerializer<T> serializer, String[] comment) {
+			super(key, defaultValue, comment);
+			this.serializer = serializer;
+		}
+		
+		public ParsedValue(String key, T defaultValue, IConfigSerializer<T> serializer) {
+			super(key, defaultValue);
+			this.serializer = serializer;
+		}
+
+		@Override
+		public char getPrefix() {
+			return 'P';
+		}
+		
+		public T get() {
+			return getValue();
+		}
+		
+		@Override
+		public boolean canSet(T value) {
+			return serializer.isValid(value);
+		}
+		
+		@Override
+		public void parseValue(String value) {
+			T parsed = serializer.deserialize(value);
+			if(parsed == null) throw new IllegalStateException("Value ["+value+"] is not correct please check the format");
+			set(parsed);
+		}
+		
+		@Override
+		protected String serializedValue(MultilinePolicy policy) {
+			return serializer.serialize(get());
+		}
+
+		@Override
+		public String getLimitations() {
+			return "Format: ["+serializer.getFormat()+"], Example: ["+serializer.serialize(serializer.getExample())+"]";
+		}
+		
+		@Override
+		public void serialize(IWriteBuffer buffer) {
+			serializer.serialize(buffer, getValue());
+		}
+
+		@Override
+		public void deserialize(IReadBuffer buffer) {
+			set(serializer.deserialize(buffer));
+		}
+		
 	}
 }

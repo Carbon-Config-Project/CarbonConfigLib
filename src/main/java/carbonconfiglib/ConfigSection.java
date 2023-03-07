@@ -10,8 +10,10 @@ import carbonconfiglib.ConfigEntry.BoolValue;
 import carbonconfiglib.ConfigEntry.DoubleValue;
 import carbonconfiglib.ConfigEntry.EnumValue;
 import carbonconfiglib.ConfigEntry.IntValue;
+import carbonconfiglib.ConfigEntry.ParsedValue;
 import carbonconfiglib.ConfigEntry.StringValue;
 import carbonconfiglib.ConfigEntry.TempValue;
+import carbonconfiglib.api.IConfigSerializer;
 import carbonconfiglib.utils.Helpers;
 import carbonconfiglib.utils.MultilinePolicy;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
@@ -67,7 +69,7 @@ public class ConfigSection {
 		return add(new IntValue(key, value));
 	}
 
-	public DoubleValue addDouble(String key, double value, String comment) {
+	public DoubleValue addDouble(String key, double value, String... comment) {
 		return add(new DoubleValue(key, value, comment));
 	}
 
@@ -75,7 +77,7 @@ public class ConfigSection {
 		return add(new DoubleValue(key, value));
 	}
 
-	public StringValue addString(String key, String value, String comment) {
+	public StringValue addString(String key, String value, String... comment) {
 		return add(new StringValue(key, value, comment));
 	}
 
@@ -83,7 +85,7 @@ public class ConfigSection {
 		return add(new StringValue(key, value));
 	}
 
-	public ArrayValue addArray(String key, String[] value, String comment) {
+	public ArrayValue addArray(String key, String[] value, String... comment) {
 		return add(new ArrayValue(key, value, comment));
 	}
 
@@ -99,12 +101,20 @@ public class ConfigSection {
 		return add(new ArrayValue(key));
 	}
 
-	public <E extends Enum<E>> EnumValue<E> addEnum(String key, E value, Class<E> enumClass, String comment) {
+	public <E extends Enum<E>> EnumValue<E> addEnum(String key, E value, Class<E> enumClass, String... comment) {
 		return add(new EnumValue<>(key, value, enumClass, comment));
 	}
 
 	public <E extends Enum<E>> EnumValue<E> addEnum(String key, E value, Class<E> enumClass) {
 		return add(new EnumValue<>(key, value, enumClass));
+	}
+	
+	public <T> ParsedValue<T> addParsed(String key, T value, IConfigSerializer<T> parsers, String... comment) {
+		return add(new ParsedValue<T>(key, value, parsers, comment));
+	}
+	
+	public <T> ParsedValue<T> addParsed(String key, T value, IConfigSerializer<T> parsers) {
+		return add(new ParsedValue<T>(key, value, parsers));
 	}
 	
 	public ConfigSection addSubSection(String name) {

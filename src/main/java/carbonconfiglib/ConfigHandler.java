@@ -56,6 +56,7 @@ public final class ConfigHandler {
 		parsers.put('S', StringValue::parse);
 		parsers.put('A', ArrayValue::parse);
 		parsers.put('E', TempValue::parse);
+		parsers.put('P', TempValue::parse);
 	}
 	
 	ConfigHandler setOwner(FileSystemWatcher owner) {
