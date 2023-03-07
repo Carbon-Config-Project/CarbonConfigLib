@@ -61,6 +61,7 @@ public final class ConfigHandler {
 	
 	ConfigHandler setOwner(FileSystemWatcher owner) {
 		this.owner = owner;
+		if(owner != null) owner.onConfigCreated(this);
 		return this;
 	}
 	

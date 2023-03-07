@@ -62,6 +62,10 @@ public class FileSystemWatcher {
 		return logger;
 	}
 	
+	void onConfigCreated(ConfigHandler handler) {
+		if(changeListener != null) changeListener.onConfigCreated(handler);
+	}
+	
 	public ConfigHandler createConfig(Config config) {
 		return createConfig(config, ConfigSettings.of());
 	}
