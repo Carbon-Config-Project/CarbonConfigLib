@@ -1,4 +1,4 @@
-package carbonconfiglib;
+package carbonconfiglib.config;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -6,13 +6,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
-import carbonconfiglib.ConfigEntry.ArrayValue;
-import carbonconfiglib.ConfigEntry.BoolValue;
-import carbonconfiglib.ConfigEntry.DoubleValue;
-import carbonconfiglib.ConfigEntry.IntValue;
-import carbonconfiglib.ConfigEntry.StringValue;
-import carbonconfiglib.ConfigEntry.TempValue;
 import carbonconfiglib.api.ILogger;
+import carbonconfiglib.config.ConfigEntry.ArrayValue;
+import carbonconfiglib.config.ConfigEntry.BoolValue;
+import carbonconfiglib.config.ConfigEntry.DoubleValue;
+import carbonconfiglib.config.ConfigEntry.IntValue;
+import carbonconfiglib.config.ConfigEntry.StringValue;
+import carbonconfiglib.config.ConfigEntry.TempValue;
 import carbonconfiglib.utils.AutomationType;
 import carbonconfiglib.utils.Helpers;
 import carbonconfiglib.utils.MultilinePolicy;
@@ -100,8 +100,7 @@ public final class ConfigHandler {
 			}
 			if (Files.notExists(configFile)) {
 				save();
-			} else {
-				load();
+			} else if(load()) {
 				save();
 			}
 			if(owner != null) {
@@ -206,7 +205,7 @@ public final class ConfigHandler {
 		return stepsDone;
 	}
 	
-	public void load() {
+	public boolean load() {
 		try {
 			List<String> lines = Files.readAllLines(configFile);
 			ConfigSection currentSection = null;
@@ -237,6 +236,7 @@ public final class ConfigHandler {
 		for (Runnable r : loadedListeners) {
 			r.run();
 		}
+		return true;
 	}
 	
 	public void save() {

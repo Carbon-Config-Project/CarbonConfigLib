@@ -1,6 +1,6 @@
 package carbonconfiglib.api;
 
-import carbonconfiglib.ConfigHandler;
+import carbonconfiglib.config.ConfigHandler;
 
 public interface IConfigChangeListener {
 	void onConfigCreated(ConfigHandler configHandler);

@@ -1,4 +1,4 @@
-package carbonconfiglib;
+package carbonconfiglib.config;
 
 import java.nio.file.Path;
 

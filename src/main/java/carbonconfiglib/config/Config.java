@@ -1,4 +1,4 @@
-package carbonconfiglib;
+package carbonconfiglib.config;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;

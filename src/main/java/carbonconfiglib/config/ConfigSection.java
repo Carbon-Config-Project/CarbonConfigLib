@@ -1,19 +1,19 @@
-package carbonconfiglib;
+package carbonconfiglib.config;
 
 import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import carbonconfiglib.ConfigEntry.ArrayValue;
-import carbonconfiglib.ConfigEntry.BoolValue;
-import carbonconfiglib.ConfigEntry.DoubleValue;
-import carbonconfiglib.ConfigEntry.EnumValue;
-import carbonconfiglib.ConfigEntry.IntValue;
-import carbonconfiglib.ConfigEntry.ParsedValue;
-import carbonconfiglib.ConfigEntry.StringValue;
-import carbonconfiglib.ConfigEntry.TempValue;
 import carbonconfiglib.api.IConfigSerializer;
+import carbonconfiglib.config.ConfigEntry.ArrayValue;
+import carbonconfiglib.config.ConfigEntry.BoolValue;
+import carbonconfiglib.config.ConfigEntry.DoubleValue;
+import carbonconfiglib.config.ConfigEntry.EnumValue;
+import carbonconfiglib.config.ConfigEntry.IntValue;
+import carbonconfiglib.config.ConfigEntry.ParsedValue;
+import carbonconfiglib.config.ConfigEntry.StringValue;
+import carbonconfiglib.config.ConfigEntry.TempValue;
 import carbonconfiglib.utils.Helpers;
 import carbonconfiglib.utils.MultilinePolicy;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
