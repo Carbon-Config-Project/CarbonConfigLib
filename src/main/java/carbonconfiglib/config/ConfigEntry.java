@@ -44,7 +44,7 @@ public abstract class ConfigEntry<T> {
 		this.comment = Helpers.validateComments(comment);
 		return this;
 	}
-
+	
 	public T getValue() {
 		return value;
 	}
@@ -53,8 +53,14 @@ public abstract class ConfigEntry<T> {
 		return defaultValue;
 	}
 	
+	public abstract T parseValue(String value);
+	
+	public boolean canSetValue(String value) {
+		return canSet(parseValue(value));
+	}
+	
 	public boolean canSet(T value) {
-		return true;
+		return value != null;
 	}
 	
 	public ConfigEntry<T> set(T value) {
@@ -126,7 +132,9 @@ public abstract class ConfigEntry<T> {
 	
 	public abstract char getPrefix();
 
-	public abstract void parseValue(String value);
+	public void deserializeValue(String value) {
+		set(parseValue(value));
+	}
 	
 	public void resetDefault() {
 		value = defaultValue;
@@ -268,8 +276,8 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public void parseValue(String value) {
-			set(Integer.parseInt(value));
+		public Integer parseValue(String value) {
+			return Integer.parseInt(value);
 		}
 		
 		public static IntValue parse(String key, String value, String... comment) {
@@ -349,8 +357,8 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public void parseValue(String value) {
-			set(Double.parseDouble(value));
+		public Double parseValue(String value) {
+			return Double.parseDouble(value);
 		}
 		
 		public static DoubleValue parse(String key, String value, String... comment) {
@@ -392,8 +400,8 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public void parseValue(String value) {
-			set(Boolean.parseBoolean(value));
+		public Boolean parseValue(String value) {
+			return Boolean.parseBoolean(value);
 		}
 		
 		public static BoolValue parse(String key, String value, String... comment) {
@@ -445,8 +453,13 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public void parseValue(String value) {
-			set(value);
+		public boolean canSet(String value) {
+			return value != null;
+		}
+		
+		@Override
+		public String parseValue(String value) {
+			return value;
 		}
 		
 		public static StringValue parse(String key, String value, String... comment) {
@@ -507,17 +520,17 @@ public abstract class ConfigEntry<T> {
 
 		@Override
 		public boolean canSet(List<String> entries) {
-			return true;
+			return entries != null;
 		}
-
+		
 		@Override
 		public void set(List<String> entries) {
 			set(entries.toArray(new String[entries.size()]));
 		}
-
+		
 		@Override
-		public void parseValue(String value) {
-			set(value.isEmpty() ? new String[]{} : Helpers.trimArray(value.split(",")));
+		public String[] parseValue(String value) {
+			return value.isEmpty() ? new String[0] : Helpers.trimArray(value.split(","));
 		}
 		
 		@Override
@@ -526,7 +539,7 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		public static ArrayValue parse(String key, String value, String... comment) {
-			return new ArrayValue(key, value.isEmpty() ? new String[]{} : Helpers.trimArray(value.split(",")), comment);
+			return new ArrayValue(key, value.isEmpty() ? new String[0] : Helpers.trimArray(value.split(",")), comment);
 		}
 
 		@Override
@@ -580,8 +593,8 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public void parseValue(String value) {
-			set(Enum.valueOf(enumClass, value));
+		public E parseValue(String value) {
+			return Enum.valueOf(enumClass, value);
 		}
 		
 		@Override
@@ -623,10 +636,8 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public void parseValue(String value) {
-			T parsed = serializer.deserialize(value);
-			if(parsed == null) throw new IllegalStateException("Value ["+value+"] is not correct please check the format");
-			set(parsed);
+		public T parseValue(String value) {
+			return serializer.deserialize(value);
 		}
 		
 		@Override
@@ -648,6 +659,5 @@ public abstract class ConfigEntry<T> {
 		public void deserialize(IReadBuffer buffer) {
 			set(serializer.deserialize(buffer));
 		}
-		
 	}
 }

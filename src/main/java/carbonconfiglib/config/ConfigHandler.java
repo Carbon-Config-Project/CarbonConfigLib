@@ -174,7 +174,7 @@ public final class ConfigHandler {
 		}
 		entry.setComment(comment);
 		try {
-			if (line.charAt(0) == entry.getPrefix()) entry.parseValue(entryData[2]);
+			if (line.charAt(0) == entry.getPrefix()) entry.deserializeValue(entryData[2]);
 			else logger.fatal("config entry has wrong type: {}", line);
 		} catch (ClassCastException e) {
 			logger.fatal("config entry has wrong type: {}", line);

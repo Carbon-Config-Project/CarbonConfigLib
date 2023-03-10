@@ -41,7 +41,7 @@ public class ConfigSection {
 		ConfigEntry<?> presentKey = entries.get(entry.getKey());
 		if(presentKey != null)
 		{
-			if(presentKey instanceof TempValue) entry.parseValue(presentKey.serializedValue(MultilinePolicy.DISABLED));
+			if(presentKey instanceof TempValue) entry.deserializeValue(presentKey.serializedValue(MultilinePolicy.DISABLED));
 			else return (T)(presentKey.getPrefix() != entry.getPrefix() ? entry : presentKey).setUsed();
 		}
 		entries.put(entry.getKey(), entry.setUsed());
