@@ -6,6 +6,7 @@ import java.util.Objects;
 import java.util.StringJoiner;
 
 import carbonconfiglib.api.IConfigSerializer;
+import carbonconfiglib.api.IReloadMode;
 import carbonconfiglib.api.buffer.IReadBuffer;
 import carbonconfiglib.api.buffer.IWriteBuffer;
 import carbonconfiglib.utils.Helpers;
@@ -20,8 +21,7 @@ public abstract class ConfigEntry<T> {
 	private String[] comment;
 	private boolean used = false;
 	private boolean sync = false;
-	private boolean worldReload = false;
-	private boolean gameReload = false;
+	private IReloadMode reload = null;
 
 	public ConfigEntry(String key, T defaultValue, String... comment) {
 		if (Helpers.validateString(key))
@@ -39,7 +39,7 @@ public abstract class ConfigEntry<T> {
 	public String[] getComment() {
 		return comment;
 	}
-
+	
 	public ConfigEntry<T> setComment(String... comment) {
 		this.comment = Helpers.validateComments(comment);
 		return this;
@@ -69,10 +69,12 @@ public abstract class ConfigEntry<T> {
 		}
 		return this;
 	}
-
+	
 	public String getKey() {
 		return key;
 	}
+	
+	public abstract EntryDataType getDataType();
 	
 	final boolean isUsed() {
 		return used;
@@ -87,12 +89,12 @@ public abstract class ConfigEntry<T> {
 		return used && (value.getClass().isArray() ? !Objects.deepEquals(lastValue, value) : !Objects.equals(lastValue, value));
 	}
 	
-	public final boolean needsWorldReload() {
-		return worldReload;
+	public final boolean isDefault() {
+		return used && (value.getClass().isArray() ? !Objects.deepEquals(defaultValue, value) : !Objects.equals(defaultValue, value));
 	}
 	
-	public final boolean needsGameReload() {
-		return gameReload;
+	public final IReloadMode getReloadState() {
+		return reload;
 	}
 	
 	public final void onSynced() {
@@ -110,14 +112,8 @@ public abstract class ConfigEntry<T> {
 	}
 	
 	@SuppressWarnings("unchecked")
-	public final <S extends ConfigEntry<T>> S setWorldReload() {
-		worldReload = true;
-		return (S)this;
-	}
-	
-	@SuppressWarnings("unchecked")
-	public final <S extends ConfigEntry<T>> S setGameRestart() {
-		gameReload = true;
+	public final <S extends ConfigEntry<T>> S setRequiredReload(IReloadMode mode) {
+		this.reload = mode;
 		return (S)this;
 	}
 	
@@ -131,7 +127,7 @@ public abstract class ConfigEntry<T> {
 	}
 	
 	public abstract char getPrefix();
-
+	
 	public void deserializeValue(String value) {
 		set(parseValue(value));
 	}
@@ -139,7 +135,15 @@ public abstract class ConfigEntry<T> {
 	public void resetDefault() {
 		value = defaultValue;
 	}
-
+	
+	public String serializeDefault() {
+		return String.valueOf(defaultValue);
+	}
+	
+	public String serialize() {
+		return serializedValue(MultilinePolicy.DISABLED);
+	}
+	
 	protected String serializedValue(MultilinePolicy policy) {
 		return String.valueOf(value);
 	}
@@ -167,7 +171,7 @@ public abstract class ConfigEntry<T> {
 	}
 	
 	public abstract String getLimitations();
-
+	
 	public final String serialize(MultilinePolicy policy, int indentationLevel) {
 		String indentation = '\n' + Helpers.generateIndent(indentationLevel);
 		StringBuilder builder = new StringBuilder();
@@ -202,9 +206,8 @@ public abstract class ConfigEntry<T> {
 		}
 		return builder.toString();
 	}
-
+	
 	public abstract void serialize(IWriteBuffer buffer);
-
 	public abstract void deserialize(IReadBuffer buffer);
 	
 	public static interface IArrayConfig {
@@ -214,34 +217,41 @@ public abstract class ConfigEntry<T> {
 		public void set(List<String> entries);
 	}
 	
+	public static enum EntryDataType {
+		BOOLEAN,
+		NUMBER,
+		STRING,
+		CUSTOM;
+	}
+	
 	public static class IntValue extends ConfigEntry<Integer> {
 		private int min = Integer.MIN_VALUE;
 		private int max = Integer.MAX_VALUE;
-
+		
 		public IntValue(String key, Integer defaultValue, String... comment) {
 			super(key, defaultValue, comment);
 		}
-
+		
 		public IntValue(String key, Integer defaultValue) {
 			super(key, defaultValue);
 		}
-
+		
 		public IntValue setMin(int min) {
 			this.min = min;
 			return this;
 		}
-
+		
 		public IntValue setMax(int max) {
 			this.max = max;
 			return this;
 		}
-
+		
 		public IntValue setRange(int min, int max) {
 			this.min = min;
 			this.max = max;
 			return this;
 		}
-
+		
 		@Override
 		public IntValue set(Integer value) {
 			super.set(Helpers.clamp(value, min, max));
@@ -250,7 +260,7 @@ public abstract class ConfigEntry<T> {
 		
 		@Override
 		public boolean canSet(Integer value) {
-			return value >= min && value <= max;
+			return super.canSet(value) && value >= min && value <= max;
 		}
 		
 		@Override
@@ -271,13 +281,18 @@ public abstract class ConfigEntry<T> {
 			return 'I';
 		}
 		
+		@Override
+		public EntryDataType getDataType() {
+			return EntryDataType.NUMBER;
+		}
+		
 		public int get() {
 			return getValue().intValue();
 		}
 		
 		@Override
 		public Integer parseValue(String value) {
-			return Integer.parseInt(value);
+			return Helpers.parseInt(value);
 		}
 		
 		public static IntValue parse(String key, String value, String... comment) {
@@ -294,29 +309,29 @@ public abstract class ConfigEntry<T> {
 			set(buffer.readInt());
 		}
 	}
-
+	
 	public static class DoubleValue extends ConfigEntry<Double> {
 		private double min = Double.MIN_VALUE;
 		private double max = Double.MAX_VALUE;
-
+		
 		public DoubleValue(String key, Double defaultValue, String... comment) {
 			super(key, defaultValue, comment);
 		}
-
+		
 		public DoubleValue(String key, Double defaultValue) {
 			super(key, defaultValue);
 		}
-
+		
 		public DoubleValue setMin(double min) {
 			this.min = min;
 			return this;
 		}
-
+		
 		public DoubleValue setMax(double max) {
 			this.max = max;
 			return this;
 		}
-
+		
 		public DoubleValue setRange(double min, double max) {
 			this.min = min;
 			this.max = max;
@@ -325,7 +340,7 @@ public abstract class ConfigEntry<T> {
 		
 		@Override
 		public boolean canSet(Double value) {
-			return value >= min && value <= max;
+			return super.canSet(value) && value >= min && value <= max;
 		}
 		
 		@Override
@@ -333,10 +348,15 @@ public abstract class ConfigEntry<T> {
 			super.set(Helpers.clamp(value, min, max));
 			return this;
 		}
-
+		
 		@Override
 		public char getPrefix() {
 			return 'D';
+		}
+		
+		@Override
+		public EntryDataType getDataType() {
+			return EntryDataType.NUMBER;
 		}
 		
 		public double get() {
@@ -358,7 +378,7 @@ public abstract class ConfigEntry<T> {
 		
 		@Override
 		public Double parseValue(String value) {
-			return Double.parseDouble(value);
+			return Helpers.parseDouble(value);
 		}
 		
 		public static DoubleValue parse(String key, String value, String... comment) {
@@ -369,18 +389,18 @@ public abstract class ConfigEntry<T> {
 		public void serialize(IWriteBuffer buffer) {
 			buffer.writeDouble(get());
 		}
-
+		
 		@Override
 		public void deserialize(IReadBuffer buffer) {
 			set(buffer.readDouble());
 		}
 	}
-
+	
 	public static class BoolValue extends ConfigEntry<Boolean> {
 		public BoolValue(String key, Boolean defaultValue, String... comment) {
 			super(key, defaultValue, comment);
 		}
-
+		
 		public BoolValue(String key, Boolean defaultValue) {
 			super(key, defaultValue);
 		}
@@ -392,6 +412,11 @@ public abstract class ConfigEntry<T> {
 		@Override
 		public char getPrefix() {
 			return 'B';
+		}
+		
+		@Override
+		public EntryDataType getDataType() {
+			return EntryDataType.BOOLEAN;
 		}
 		
 		@Override
@@ -407,12 +432,12 @@ public abstract class ConfigEntry<T> {
 		public static BoolValue parse(String key, String value, String... comment) {
 			return new BoolValue(key, Boolean.parseBoolean(value), comment);
 		}
-
+		
 		@Override
 		public void serialize(IWriteBuffer buffer) {
 			buffer.writeBoolean(get());
 		}
-
+		
 		@Override
 		public void deserialize(IReadBuffer buffer) {
 			set(buffer.readBoolean());
@@ -433,14 +458,19 @@ public abstract class ConfigEntry<T> {
 		public StringValue(String key, String defaultValue, String... comment) {
 			super(key, defaultValue, comment);
 		}
-
+		
 		public StringValue(String key, String defaultValue) {
 			super(key, defaultValue);
 		}
-
+		
 		@Override
 		public char getPrefix() {
 			return 'S';
+		}
+		
+		@Override
+		public EntryDataType getDataType() {
+			return EntryDataType.STRING;
 		}
 		
 		public String get() {
@@ -465,38 +495,43 @@ public abstract class ConfigEntry<T> {
 		public static StringValue parse(String key, String value, String... comment) {
 			return new StringValue(key, value, comment);
 		}
-
+		
 		@Override
 		public void serialize(IWriteBuffer buffer) {
 			buffer.writeString(get());
 		}
-
+		
 		@Override
 		public void deserialize(IReadBuffer buffer) {
 			set(buffer.readString());
 		}
 	}
-
+	
 	public static class ArrayValue extends ConfigEntry<String[]> implements IArrayConfig {
 		public ArrayValue(String key, String[] defaultValue, String... comment) {
 			super(key, defaultValue, comment);
 		}
-
+		
 		public ArrayValue(String key, String[] defaultValue) {
 			super(key, defaultValue);
 		}
-
+		
 		public ArrayValue(String key, String comment) {
 			super(key, new String[]{}, comment);
 		}
-
+		
 		public ArrayValue(String key) {
 			super(key, new String[]{});
 		}
-
+		
 		@Override
 		public char getPrefix() {
 			return 'A';
+		}
+		
+		@Override
+		public EntryDataType getDataType() {
+			return EntryDataType.STRING;
 		}
 		
 		public String[] get() {
@@ -512,12 +547,12 @@ public abstract class ConfigEntry<T> {
 		public List<String> getEntries() {
 			return new ObjectArrayList<>(getValue());
 		}
-
+		
 		@Override
 		public List<String> getDefaults() {
 			return ObjectArrayList.wrap(getValue());
 		}
-
+		
 		@Override
 		public boolean canSet(List<String> entries) {
 			return entries != null;
@@ -541,7 +576,7 @@ public abstract class ConfigEntry<T> {
 		public static ArrayValue parse(String key, String value, String... comment) {
 			return new ArrayValue(key, value.isEmpty() ? new String[0] : Helpers.trimArray(value.split(",")), comment);
 		}
-
+		
 		@Override
 		public void serialize(IWriteBuffer buffer) {
 			buffer.writeVarInt(get().length);
@@ -549,7 +584,7 @@ public abstract class ConfigEntry<T> {
 				buffer.writeString(val);
 			}
 		}
-
+		
 		@Override
 		public void deserialize(IReadBuffer buffer) {
 			String[] val = new String[buffer.readVarInt()];
@@ -559,15 +594,15 @@ public abstract class ConfigEntry<T> {
 			set(val);
 		}
 	}
-
+	
 	public static class EnumValue<E extends Enum<E>> extends ConfigEntry<E> {
 		private Class<E> enumClass;
-
+		
 		public EnumValue(String key, E defaultValue, Class<E> enumClass, String... comment) {
 			super(key, defaultValue, comment);
 			this.enumClass = enumClass;
 		}
-
+		
 		public EnumValue(String key, E defaultValue, Class<E> enumClass) {
 			super(key, defaultValue);
 			this.enumClass = enumClass;
@@ -576,6 +611,11 @@ public abstract class ConfigEntry<T> {
 		@Override
 		public char getPrefix() {
 			return 'E';
+		}
+		
+		@Override
+		public EntryDataType getDataType() {
+			return EntryDataType.STRING;
 		}
 		
 		@Override
@@ -601,7 +641,7 @@ public abstract class ConfigEntry<T> {
 		public void serialize(IWriteBuffer buffer) {
 			buffer.writeEnum(get());
 		}
-
+		
 		@Override
 		public void deserialize(IReadBuffer buffer) {
 			set(buffer.readEnum(enumClass));
@@ -620,10 +660,15 @@ public abstract class ConfigEntry<T> {
 			super(key, defaultValue);
 			this.serializer = serializer;
 		}
-
+		
 		@Override
 		public char getPrefix() {
 			return 'P';
+		}
+		
+		@Override
+		public EntryDataType getDataType() {
+			return EntryDataType.STRING;
 		}
 		
 		public T get() {
@@ -641,6 +686,11 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
+		public String serializeDefault() {
+			return serializer.serialize(getDefault());
+		}
+		
+		@Override
 		protected String serializedValue(MultilinePolicy policy) {
 			return serializer.serialize(get());
 		}
@@ -654,7 +704,7 @@ public abstract class ConfigEntry<T> {
 		public void serialize(IWriteBuffer buffer) {
 			serializer.serialize(buffer, getValue());
 		}
-
+		
 		@Override
 		public void deserialize(IReadBuffer buffer) {
 			set(serializer.deserialize(buffer));

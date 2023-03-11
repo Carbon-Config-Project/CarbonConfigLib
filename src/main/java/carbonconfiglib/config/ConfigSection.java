@@ -27,7 +27,7 @@ public class ConfigSection {
 	private boolean used = false;
 	private Object2ObjectMap<String, ConfigEntry<?>> entries = new Object2ObjectLinkedOpenHashMap<>();
 	private Object2ObjectMap<String, ConfigSection> subSections = new Object2ObjectLinkedOpenHashMap<>();
-
+	
 	public ConfigSection(String name) {
 		if (Helpers.validateString(name))
 			throw new IllegalArgumentException("ConfigSection name must not be null, empty or start/end with white spaces");
@@ -35,7 +35,7 @@ public class ConfigSection {
 			throw new IllegalArgumentException("ConfigSection name must not contain period signs. Name: " + name);
 		this.name = name;
 	}
-
+	
 	@SuppressWarnings("unchecked")
 	public <V, T extends ConfigEntry<V>> T add(T entry) {
 		ConfigEntry<?> presentKey = entries.get(entry.getKey());
@@ -52,59 +52,59 @@ public class ConfigSection {
 		entries.putIfAbsent(entry.getKey(), entry);
 		return entry;
 	}
-
+	
 	public BoolValue addBool(String key, boolean value, String comment) {
 		return add(new BoolValue(key, value, comment));
 	}
-
+	
 	public BoolValue addBool(String key, boolean value) {
 		return add(new BoolValue(key, value));
 	}
-
+	
 	public IntValue addInt(String key, int value, String comment) {
 		return add(new IntValue(key, value, comment));
 	}
-
+	
 	public IntValue addInt(String key, int value) {
 		return add(new IntValue(key, value));
 	}
-
+	
 	public DoubleValue addDouble(String key, double value, String... comment) {
 		return add(new DoubleValue(key, value, comment));
 	}
-
+	
 	public DoubleValue addDouble(String key, double value) {
 		return add(new DoubleValue(key, value));
 	}
-
+	
 	public StringValue addString(String key, String value, String... comment) {
 		return add(new StringValue(key, value, comment));
 	}
-
+	
 	public StringValue addString(String key, String value) {
 		return add(new StringValue(key, value));
 	}
-
+	
 	public ArrayValue addArray(String key, String[] value, String... comment) {
 		return add(new ArrayValue(key, value, comment));
 	}
-
+	
 	public ArrayValue addArray(String key, String[] value) {
 		return add(new ArrayValue(key, value));
 	}
-
+	
 	public ArrayValue addArray(String key, String comment) {
 		return add(new ArrayValue(key, comment));
 	}
-
+	
 	public ArrayValue addArray(String key) {
 		return add(new ArrayValue(key));
 	}
-
+	
 	public <E extends Enum<E>> EnumValue<E> addEnum(String key, E value, Class<E> enumClass, String... comment) {
 		return add(new EnumValue<>(key, value, enumClass, comment));
 	}
-
+	
 	public <E extends Enum<E>> EnumValue<E> addEnum(String key, E value, Class<E> enumClass) {
 		return add(new EnumValue<>(key, value, enumClass));
 	}
@@ -134,11 +134,11 @@ public class ConfigSection {
 		subSections.putIfAbsent(section.name, section);
 		return section.setUsed();
 	}
-
+	
 	public ConfigEntry<?> getEntry(String name) {
 		return entries.get(name);
 	}
-
+	
 	public ConfigSection getSubSection(String name) {
 		return subSections.get(name);
 	}
@@ -158,7 +158,7 @@ public class ConfigSection {
 	}
 	
 	public List<ConfigEntry<?>> getEntries() {
-		return new ObjectArrayList<>(entries.values());		
+		return new ObjectArrayList<>(entries.values());
 	}
 	
 	public void resetDefault() {
@@ -179,11 +179,11 @@ public class ConfigSection {
 	public ConfigSection getParent() {
 		return parent;
 	}
-
+	
 	public String getName() {
 		return name;
 	}
-
+	
 	public String getSectionPath() {
 		return (parent != null ? parent.getSectionPath() + "." : "") + name;
 	}
@@ -196,7 +196,7 @@ public class ConfigSection {
 		used = true;
 		return this;
 	}
-
+	
 	public void getSyncedEntries(Map<String, ConfigEntry<?>> syncedEntries) {
 		for (ConfigEntry<?> entry : entries.values()) {
 			if (entry.isSynced()) {
@@ -207,7 +207,7 @@ public class ConfigSection {
 			section.getSyncedEntries(syncedEntries);
 		}
 	}
-
+	
 	public String serialize(MultilinePolicy policy) {
 		return serialize(policy, 0);
 	}

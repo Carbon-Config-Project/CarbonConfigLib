@@ -72,24 +72,22 @@ public interface IConfigSerializer<T> {
 		public T deserialize(String value) {
 			return reader.apply(value);
 		}
-
+		
 		@Override
 		public String serialize(T value) {
 			return writer.apply(value);
 		}
-
+		
 		@Override
 		public T deserialize(IReadBuffer buffer) {
 			if(readBuffer == null || writeBuffer == null) throw new UnsupportedOperationException("No Read/Write Buffer Provided");
 			return readBuffer.apply(buffer); 
 		}
-
+		
 		@Override
 		public void serialize(IWriteBuffer buffer, T value) {
 			if(readBuffer == null || writeBuffer == null) throw new UnsupportedOperationException("No Read/Write Buffer Provided");
 			writeBuffer.accept(buffer, value);
 		}
-		
-		
 	}
 }

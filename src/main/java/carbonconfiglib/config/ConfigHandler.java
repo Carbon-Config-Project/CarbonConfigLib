@@ -30,7 +30,7 @@ public final class ConfigHandler {
 	
 	private final ILogger logger;
 	private FileSystemWatcher owner;
-
+	
 	private List<Runnable> loadedListeners = new ObjectArrayList<>();
 	private Char2ObjectMap<IConfigParser> parsers = new Char2ObjectOpenHashMap<>();
 	
@@ -76,7 +76,7 @@ public final class ConfigHandler {
 	public Config getConfig() {
 		return config;
 	}
-
+	
 	public String getSubFolder() {
 		return subFolder;
 	}
@@ -115,7 +115,7 @@ public final class ConfigHandler {
 			e.printStackTrace();
 		}
 	}
-
+	
 	public void addLoadedListener(Runnable listener) {
 		loadedListeners.add(listener);
 	}

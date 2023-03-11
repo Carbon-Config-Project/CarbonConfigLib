@@ -42,7 +42,6 @@ public class FileSystemWatcher {
 		this.logger = logger;
 		this.basePath = basePath;
 		this.changeListener = changedListener;
-
 		WatchService tmp;
 		try {
 			tmp = FileSystems.getDefault().newWatchService();

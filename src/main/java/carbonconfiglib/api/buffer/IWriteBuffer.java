@@ -16,6 +16,5 @@ public interface IWriteBuffer {
 	void writeEnum(Enum<?> value);
 	void writeString(String value);
 	void writeBytes(byte[] value);
-
 	void writeUUID(UUID value);
 }

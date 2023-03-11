@@ -1,16 +1,15 @@
 package carbonconfiglib.config;
 
-import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
-import it.unimi.dsi.fastutil.objects.Object2ObjectMaps;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-
 import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
 
 import carbonconfiglib.utils.Helpers;
 import carbonconfiglib.utils.MultilinePolicy;
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectMaps;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 public class Config {
 	private String name;
@@ -77,7 +76,6 @@ public class Config {
 	public String serialize(MultilinePolicy policy) {
 		if (sections.size() == 0)
 			return "";
-
 		StringJoiner joiner = new StringJoiner("\n\n");
 		Object2ObjectMaps.fastForEach(sections, entry -> {
 			String val = entry.getValue().serialize(policy);
