@@ -4,9 +4,11 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.StringJoiner;
+import java.util.function.Predicate;
 
 import carbonconfiglib.api.IConfigSerializer;
 import carbonconfiglib.api.IReloadMode;
+import carbonconfiglib.api.ISuggestedEnum;
 import carbonconfiglib.api.buffer.IReadBuffer;
 import carbonconfiglib.api.buffer.IWriteBuffer;
 import carbonconfiglib.utils.Helpers;
@@ -22,6 +24,7 @@ public abstract class ConfigEntry<T> {
 	private boolean used = false;
 	private boolean sync = false;
 	private IReloadMode reload = null;
+	private List<Suggestion> suggestions = new ObjectArrayList<>();
 
 	public ConfigEntry(String key, T defaultValue, String... comment) {
 		if (Helpers.validateString(key))
@@ -75,6 +78,36 @@ public abstract class ConfigEntry<T> {
 	}
 	
 	public abstract EntryDataType getDataType();
+	
+	@SuppressWarnings("unchecked")
+	public final <S extends ConfigEntry<T>> S addSuggestions(T... values) {
+		for(T value : values) {
+			suggestions.add(new Suggestion(serializedValue(MultilinePolicy.DISABLED, value)));
+		}
+		return (S)this;
+	}
+	
+	@SuppressWarnings("unchecked")
+	public final <S extends ConfigEntry<T>> S addSuggestion(T value) {
+		suggestions.add(new Suggestion(serializedValue(MultilinePolicy.DISABLED, value)));
+		return (S)this;
+	}
+	
+	@SuppressWarnings("unchecked")
+	public final <S extends ConfigEntry<T>> S addSuggestion(String name, T value) {
+		suggestions.add(new Suggestion(name, serializedValue(MultilinePolicy.DISABLED, value)));
+		return (S)this;
+	}
+	
+	public final List<Suggestion> getSuggestions() {
+		return suggestions;
+	}
+	
+	@SuppressWarnings("unchecked")
+	public final <S extends ConfigEntry<T>> S clearSuggestions() {
+		suggestions.clear();
+		return (S)this;
+	}
 	
 	final boolean isUsed() {
 		return used;
@@ -137,14 +170,14 @@ public abstract class ConfigEntry<T> {
 	}
 	
 	public String serializeDefault() {
-		return String.valueOf(defaultValue);
+		return serializedValue(MultilinePolicy.DISABLED, defaultValue);
 	}
 	
 	public String serialize() {
-		return serializedValue(MultilinePolicy.DISABLED);
+		return serializedValue(MultilinePolicy.DISABLED, value);
 	}
 	
-	protected String serializedValue(MultilinePolicy policy) {
+	protected String serializedValue(MultilinePolicy policy, T value) {
 		return String.valueOf(value);
 	}
 	
@@ -195,7 +228,7 @@ public abstract class ConfigEntry<T> {
 		builder.append(':');
 		builder.append(key);
 		builder.append('=');
-		String line = serializedValue(policy);
+		String line = serializedValue(policy, value);
 		if(policy != MultilinePolicy.DISABLED && this instanceof IArrayConfig && line.contains("\n")) {
 			String indent = "\n"+Helpers.generateIndent(indentationLevel+1);
 			builder.append(" < ").append(indent).append(line.replaceAll("\\R", indent));
@@ -215,6 +248,28 @@ public abstract class ConfigEntry<T> {
 		public List<String> getDefaults();
 		public boolean canSet(List<String> entries);
 		public void set(List<String> entries);
+	}
+	
+	public static class Suggestion {
+		String name;
+		String value;
+		
+		public Suggestion(String value) {
+			this(value, value);
+		}
+		
+		public Suggestion(String name, String value) {
+			this.name = name;
+			this.value = value;
+		}
+		
+		public String getName() {
+			return name;
+		}
+		
+		public String getValue() {
+			return value;
+		}
 	}
 	
 	public static enum EntryDataType {
@@ -455,12 +510,19 @@ public abstract class ConfigEntry<T> {
 	}
 
 	public static class StringValue extends ConfigEntry<String> {
+		Predicate<String> filter;
+		
 		public StringValue(String key, String defaultValue, String... comment) {
 			super(key, defaultValue, comment);
 		}
 		
 		public StringValue(String key, String defaultValue) {
 			super(key, defaultValue);
+		}
+		
+		public StringValue withFilter(Predicate<String> filter) {
+			this.filter = filter;
+			return this;
 		}
 		
 		@Override
@@ -484,12 +546,12 @@ public abstract class ConfigEntry<T> {
 		
 		@Override
 		public boolean canSet(String value) {
-			return value != null;
+			return value != null && (filter == null || filter.test(value));
 		}
 		
 		@Override
 		public String parseValue(String value) {
-			return value;
+			return filter == null || filter.test(value) ? value : null;
 		}
 		
 		public static StringValue parse(String key, String value, String... comment) {
@@ -569,8 +631,8 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		protected String serializedValue(MultilinePolicy policy) {
-			return serializeArray(policy, get());
+		protected String serializedValue(MultilinePolicy policy, String[] value) {
+			return serializeArray(policy, value);
 		}
 		
 		public static ArrayValue parse(String key, String value, String... comment) {
@@ -601,11 +663,23 @@ public abstract class ConfigEntry<T> {
 		public EnumValue(String key, E defaultValue, Class<E> enumClass, String... comment) {
 			super(key, defaultValue, comment);
 			this.enumClass = enumClass;
+			addSuggestions();
 		}
 		
 		public EnumValue(String key, E defaultValue, Class<E> enumClass) {
 			super(key, defaultValue);
 			this.enumClass = enumClass;
+			addSuggestions();
+		}
+		
+		private void addSuggestions() {
+			for(E value : enumClass.getEnumConstants()) {
+				if(value instanceof ISuggestedEnum) {
+					addSuggestion(((ISuggestedEnum)value).getName(), value);
+					continue;
+				}
+				addSuggestion(value);
+			}
 		}
 		
 		@Override
@@ -691,8 +765,8 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		protected String serializedValue(MultilinePolicy policy) {
-			return serializer.serialize(get());
+		protected String serializedValue(MultilinePolicy policy, T value) {
+			return serializer.serialize(value);
 		}
 
 		@Override
