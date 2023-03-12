@@ -688,6 +688,11 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
+		protected String serializedValue(MultilinePolicy policy, E value) {
+			return value.name();
+		}
+		
+		@Override
 		public EntryDataType getDataType() {
 			return EntryDataType.STRING;
 		}
@@ -703,7 +708,16 @@ public abstract class ConfigEntry<T> {
 		
 		@Override
 		public String getLimitations() {
-			return "Must be one of " + Arrays.toString(enumClass.getEnumConstants());
+			return "Must be one of " + Arrays.toString(toArray());
+		}
+		
+		private String[] toArray() {
+			E[] array = enumClass.getEnumConstants();
+			String[] values = new String[array.length];
+			for(int i = 0,m=array.length;i<m;i++) {
+				values[i] = array[i].name();
+			}
+			return values;
 		}
 		
 		@Override
