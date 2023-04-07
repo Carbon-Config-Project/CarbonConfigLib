@@ -88,20 +88,20 @@ public abstract class ConfigEntry<T> {
 	
 	public abstract IEntryDataType getDataType();
 	
-	protected final <S extends ConfigEntry<T>> S addSuggestion(String value) {
-		return addSuggestion(value, value, null);
+	protected final <S extends ConfigEntry<T>> S addSuggestionInternal(String value) {
+		return addSuggestionInternal(value, value, null);
 	}
 	
-	protected final <S extends ConfigEntry<T>> S addSuggestion(String name, String value) {
-		return addSuggestion(name, value, null);
+	protected final <S extends ConfigEntry<T>> S addSuggestionInternal(String name, String value) {
+		return addSuggestionInternal(name, value, null);
 	}
 	
-	protected final <S extends ConfigEntry<T>> S addSuggestion(Object extra, String value) {
-		return addSuggestion(value, value, extra);
+	protected final <S extends ConfigEntry<T>> S addSuggestionInternal(Object extra, String value) {
+		return addSuggestionInternal(value, value, extra);
 	}
 	
 	@SuppressWarnings("unchecked")
-	public final <S extends ConfigEntry<T>> S addSuggestion(String name, String value, Object extra) {
+	protected final <S extends ConfigEntry<T>> S addSuggestionInternal(String name, String value, Object extra) {
 		if(!canSetValue(value)) throw new IllegalArgumentException("Value ["+value+"] is not valid. Meaning it can not be a suggestion");
 		suggestions.add(new Suggestion(name, value, extra));
 		return (S)this;
@@ -311,25 +311,25 @@ public abstract class ConfigEntry<T> {
 		@SuppressWarnings("unchecked")
 		public final <S extends BasicConfigEntry<T>> S addSuggestions(T... values) {
 			for(T value : values) {
-				addSuggestion(serializedValue(MultilinePolicy.DISABLED, value));
+				addSuggestionInternal(serializedValue(MultilinePolicy.DISABLED, value));
 			}
 			return (S)this;
 		}
 		
 		public final <S extends BasicConfigEntry<T>> S addSuggestion(T value) {
-			return addSuggestion(serializedValue(MultilinePolicy.DISABLED, value));
+			return addSuggestionInternal(serializedValue(MultilinePolicy.DISABLED, value));
 		}
 		
 		public final <S extends BasicConfigEntry<T>> S addSuggestion(T value, Object extra) {
-			return addSuggestion(extra, serializedValue(MultilinePolicy.DISABLED, value));
+			return addSuggestionInternal(extra, serializedValue(MultilinePolicy.DISABLED, value));
 		}
 		
 		public final <S extends BasicConfigEntry<T>> S addSuggestion(String name, T value) {
-			return addSuggestion(name, serializedValue(MultilinePolicy.DISABLED, value));
+			return addSuggestionInternal(name, serializedValue(MultilinePolicy.DISABLED, value));
 		}
 		
 		public final <S extends BasicConfigEntry<T>> S addSuggestion(String name, T value, Object extra) {
-			return addSuggestion(name, serializedValue(MultilinePolicy.DISABLED, value), extra);
+			return addSuggestionInternal(name, serializedValue(MultilinePolicy.DISABLED, value), extra);
 		}
 	}
 	
@@ -342,25 +342,25 @@ public abstract class ConfigEntry<T> {
 		@SuppressWarnings("unchecked")
 		public final <S extends ArrayConfigEntry<T>> S addSuggestions(T... values) {
 			for(T value : values) {
-				addSuggestion(serializedValue(MultilinePolicy.DISABLED, toArray(value)));
+				addSuggestionInternal(serializedValue(MultilinePolicy.DISABLED, toArray(value)));
 			}
 			return (S)this;
 		}
 		
 		public final <S extends ArrayConfigEntry<T>> S addSuggestion(T value) {
-			return addSuggestion(serializedValue(MultilinePolicy.DISABLED, toArray(value)));
+			return addSuggestionInternal(serializedValue(MultilinePolicy.DISABLED, toArray(value)));
 		}
 		
 		public final <S extends ArrayConfigEntry<T>> S addSuggestion(T value, Object extra) {
-			return addSuggestion(extra, serializedValue(MultilinePolicy.DISABLED, toArray(value)));
+			return addSuggestionInternal(extra, serializedValue(MultilinePolicy.DISABLED, toArray(value)));
 		}
 		
 		public final <S extends ArrayConfigEntry<T>> S addSuggestion(String name, T value) {
-			return addSuggestion(name, serializedValue(MultilinePolicy.DISABLED, toArray(value)));
+			return addSuggestionInternal(name, serializedValue(MultilinePolicy.DISABLED, toArray(value)));
 		}
 		
 		public final <S extends ArrayConfigEntry<T>> S addSuggestion(String name, T value, Object extra) {
-			return addSuggestion(name, serializedValue(MultilinePolicy.DISABLED, toArray(value)), extra);
+			return addSuggestionInternal(name, serializedValue(MultilinePolicy.DISABLED, toArray(value)), extra);
 		}
 		
 		@SuppressWarnings("unchecked")
