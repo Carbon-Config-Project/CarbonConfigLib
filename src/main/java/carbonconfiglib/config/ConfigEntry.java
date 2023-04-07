@@ -88,15 +88,15 @@ public abstract class ConfigEntry<T> {
 	
 	public abstract IEntryDataType getDataType();
 	
-	public final <S extends ConfigEntry<T>> S addSuggestion(String value) {
+	protected final <S extends ConfigEntry<T>> S addSuggestion(String value) {
 		return addSuggestion(value, value, null);
 	}
 	
-	public final <S extends ConfigEntry<T>> S addSuggestion(String name, String value) {
+	protected final <S extends ConfigEntry<T>> S addSuggestion(String name, String value) {
 		return addSuggestion(name, value, null);
 	}
 	
-	public final <S extends ConfigEntry<T>> S addSuggestion(Object extra, String value) {
+	protected final <S extends ConfigEntry<T>> S addSuggestion(Object extra, String value) {
 		return addSuggestion(value, value, extra);
 	}
 	
@@ -691,7 +691,7 @@ public abstract class ConfigEntry<T> {
 		}
 	}
 	
-	public static class ArrayValue extends ConfigEntry<String[]> implements IArrayConfig {
+	public static class ArrayValue extends ArrayConfigEntry<String> implements IArrayConfig {
 		protected Predicate<String> filter;
 
 		public ArrayValue(String key, String[] defaultValue, String... comment) {
