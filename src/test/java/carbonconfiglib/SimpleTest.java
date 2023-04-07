@@ -1,26 +1,27 @@
 package carbonconfiglib;
 
-import java.nio.file.Paths;
-
 import carbonconfiglib.api.IConfigSerializer;
 import carbonconfiglib.base.SimpleLogger;
 import carbonconfiglib.base.TestingValue;
 import carbonconfiglib.config.Config;
-import carbonconfiglib.config.ConfigHandler;
-import carbonconfiglib.config.ConfigSection;
-import carbonconfiglib.config.ConfigSettings;
-import carbonconfiglib.config.FileSystemWatcher;
 import carbonconfiglib.config.ConfigEntry.ArrayValue;
 import carbonconfiglib.config.ConfigEntry.BoolValue;
-import carbonconfiglib.config.ConfigEntry.CompoundDataType;
 import carbonconfiglib.config.ConfigEntry.DoubleValue;
-import carbonconfiglib.config.ConfigEntry.EntryDataType;
 import carbonconfiglib.config.ConfigEntry.EnumValue;
 import carbonconfiglib.config.ConfigEntry.IntValue;
 import carbonconfiglib.config.ConfigEntry.ParsedValue;
 import carbonconfiglib.config.ConfigEntry.StringValue;
+import carbonconfiglib.config.ConfigHandler;
+import carbonconfiglib.config.ConfigSection;
+import carbonconfiglib.config.ConfigSettings;
+import carbonconfiglib.config.FileSystemWatcher;
 import carbonconfiglib.utils.AutomationType;
+import carbonconfiglib.utils.IEntryDataType;
+import carbonconfiglib.utils.IEntryDataType.CompoundDataType;
+import carbonconfiglib.utils.IEntryDataType.EntryDataType;
 import carbonconfiglib.utils.MultilinePolicy;
+
+import java.nio.file.Paths;
 
 public class SimpleTest {
 	public static final FileSystemWatcher WATCHER = new FileSystemWatcher(new SimpleLogger(), Paths.get("run"), null);

@@ -16,6 +16,7 @@ import carbonconfiglib.config.ConfigEntry.TempValue;
 import carbonconfiglib.utils.AutomationType;
 import carbonconfiglib.utils.Helpers;
 import carbonconfiglib.utils.MultilinePolicy;
+import carbonconfiglib.utils.ParseResult;
 import it.unimi.dsi.fastutil.chars.Char2ObjectMap;
 import it.unimi.dsi.fastutil.chars.Char2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -159,7 +160,7 @@ public final class ConfigHandler {
 				return extra;
 			}
 			try {
-				entry = parser.parse(entryData[1], entryData[2], comment);
+				entry = parser.parse(entryData[1], entryData[2], comment).getValue();
 				if(entry == null) {
 					logger.error("config entry was able to be parsed: {}", line);
 					return extra;
@@ -253,6 +254,6 @@ public final class ConfigHandler {
 	@FunctionalInterface
 	public interface IConfigParser
 	{
-		ConfigEntry<?> parse(String key, String value, String[] comment);
+		ParseResult<ConfigEntry<?>, Exception> parse(String key, String value, String[] comment);
 	}
 }

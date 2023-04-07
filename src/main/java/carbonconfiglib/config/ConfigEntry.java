@@ -18,6 +18,7 @@ import carbonconfiglib.utils.IEntryDataType;
 import carbonconfiglib.utils.IEntryDataType.CompoundDataType;
 import carbonconfiglib.utils.IEntryDataType.EntryDataType;
 import carbonconfiglib.utils.MultilinePolicy;
+import carbonconfiglib.utils.ParseResult;
 import carbonconfiglib.utils.SyncType;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
@@ -65,10 +66,11 @@ public abstract class ConfigEntry<T> {
 		return defaultValue;
 	}
 	
-	public abstract T parseValue(String value);
+	public abstract ParseResult<T, Exception> parseValue(String value);
 	
 	public boolean canSetValue(String value) {
-		return canSet(parseValue(value));
+		ParseResult<T, Exception> result = parseValue(value);
+		return !result.hasError() && canSet(result.getValue());
 	}
 	
 	public boolean canSet(T value) {
@@ -178,7 +180,10 @@ public abstract class ConfigEntry<T> {
 	public abstract char getPrefix();
 	
 	public void deserializeValue(String value) {
-		set(parseValue(value));
+		ParseResult<T, Exception> result = parseValue(value);
+		if (!result.hasError()) {
+			set(result.getValue());
+		}
 	}
 	
 	public void resetDefault() {
@@ -443,12 +448,15 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public Integer parseValue(String value) {
+		public ParseResult<Integer, Exception> parseValue(String value) {
 			return Helpers.parseInt(value);
 		}
 		
-		public static IntValue parse(String key, String value, String... comment) {
-			return new IntValue(key, Integer.parseInt(value), comment);
+		public static ParseResult<IntValue, Exception> parse(String key, String value, String... comment) {
+			ParseResult<Integer, Exception> result = Helpers.parseInt(value);
+			if (result.hasError())
+				return ParseResult.of(null, result.getError());
+			return ParseResult.of(new IntValue(key, result.getValue(), comment));
 		}
 
 		@Override
@@ -534,7 +542,7 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public Double parseValue(String value) {
+		public ParseResult<Double, Exception> parseValue(String value) {
 			return Helpers.parseDouble(value);
 		}
 		
@@ -587,8 +595,8 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public Boolean parseValue(String value) {
-			return Boolean.parseBoolean(value);
+		public ParseResult<Boolean, Exception> parseValue(String value) {
+			return ParseResult.of(Boolean.parseBoolean(value));
 		}
 		
 		public static BoolValue parse(String key, String value, String... comment) {
@@ -672,8 +680,8 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public String parseValue(String value) {
-			return filter == null || filter.test(value) ? value : null;
+		public ParseResult<String, Exception> parseValue(String value) {
+			return ParseResult.of(filter == null || filter.test(value) ? value : null);
 		}
 		
 		public static StringValue parse(String key, String value, String... comment) {
@@ -765,8 +773,8 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public String[] parseValue(String value) {
-			return Helpers.splitArray(value, ",");
+		public ParseResult<String[], Exception> parseValue(String value) {
+			return ParseResult.of(Helpers.splitArray(value, ","));
 		}
 		
 		@Override
@@ -863,8 +871,13 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public E parseValue(String value) {
-			return Enum.valueOf(enumClass, value);
+		public ParseResult<E, Exception> parseValue(String value) {
+			try {
+				return ParseResult.of(Enum.valueOf(enumClass, value));
+			}
+			catch (Exception e) {
+				return ParseResult.of(null, e);
+			}
 		}
 		
 		@Override
@@ -916,8 +929,8 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public T parseValue(String value) {
-			return serializer.deserialize(Helpers.splitArray(value, ";"));
+		public ParseResult<T, Exception> parseValue(String value) {
+			return ParseResult.of(serializer.deserialize(Helpers.splitArray(value, ";")));
 		}
 		
 		@Override
