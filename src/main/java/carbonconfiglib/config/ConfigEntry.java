@@ -1,7 +1,9 @@
 package carbonconfiglib.config;
 
+import java.lang.reflect.Array;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.StringJoiner;
 import java.util.function.Predicate;
@@ -12,7 +14,11 @@ import carbonconfiglib.api.ISuggestedEnum;
 import carbonconfiglib.api.buffer.IReadBuffer;
 import carbonconfiglib.api.buffer.IWriteBuffer;
 import carbonconfiglib.utils.Helpers;
+import carbonconfiglib.utils.IEntryDataType;
+import carbonconfiglib.utils.IEntryDataType.CompoundDataType;
+import carbonconfiglib.utils.IEntryDataType.EntryDataType;
 import carbonconfiglib.utils.MultilinePolicy;
+import carbonconfiglib.utils.SyncType;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 public abstract class ConfigEntry<T> {
@@ -22,8 +28,9 @@ public abstract class ConfigEntry<T> {
 	private T lastValue;
 	private String[] comment;
 	private boolean used = false;
-	private boolean sync = false;
+	private boolean serverSync = false;
 	private IReloadMode reload = null;
+	private SyncedConfig<ConfigEntry<T>> syncCache;
 	private List<Suggestion> suggestions = new ObjectArrayList<>();
 
 	public ConfigEntry(String key, T defaultValue, String... comment) {
@@ -47,6 +54,8 @@ public abstract class ConfigEntry<T> {
 		this.comment = Helpers.validateComments(comment);
 		return this;
 	}
+	
+	protected abstract ConfigEntry<T> copy();
 	
 	public T getValue() {
 		return value;
@@ -77,25 +86,24 @@ public abstract class ConfigEntry<T> {
 		return key;
 	}
 	
-	public abstract EntryDataType getDataType();
+	public abstract IEntryDataType getDataType();
 	
-	@SuppressWarnings("unchecked")
-	public final <S extends ConfigEntry<T>> S addSuggestions(T... values) {
-		for(T value : values) {
-			suggestions.add(new Suggestion(serializedValue(MultilinePolicy.DISABLED, value)));
-		}
-		return (S)this;
+	public final <S extends ConfigEntry<T>> S addSuggestion(String value) {
+		return addSuggestion(value, value, null);
+	}
+	
+	public final <S extends ConfigEntry<T>> S addSuggestion(String name, String value) {
+		return addSuggestion(name, value, null);
+	}
+	
+	public final <S extends ConfigEntry<T>> S addSuggestion(Object extra, String value) {
+		return addSuggestion(value, value, extra);
 	}
 	
 	@SuppressWarnings("unchecked")
-	public final <S extends ConfigEntry<T>> S addSuggestion(T value) {
-		suggestions.add(new Suggestion(serializedValue(MultilinePolicy.DISABLED, value)));
-		return (S)this;
-	}
-	
-	@SuppressWarnings("unchecked")
-	public final <S extends ConfigEntry<T>> S addSuggestion(String name, T value) {
-		suggestions.add(new Suggestion(name, serializedValue(MultilinePolicy.DISABLED, value)));
+	public final <S extends ConfigEntry<T>> S addSuggestion(String name, String value, Object extra) {
+		if(!canSetValue(value)) throw new IllegalArgumentException("Value ["+value+"] is not valid. Meaning it can not be a suggestion");
+		suggestions.add(new Suggestion(name, value, extra));
 		return (S)this;
 	}
 	
@@ -134,14 +142,22 @@ public abstract class ConfigEntry<T> {
 		lastValue = value;
 	}
 	
-	final boolean isSynced() {
-		return sync;
+	final SyncType getSyncType() {
+		return syncCache != null ? SyncType.CLIENT_TO_SERVER : (serverSync ? SyncType.SERVER_TO_CLIENT : SyncType.NONE);
 	}
 	
 	@SuppressWarnings("unchecked")
-	public final <S extends ConfigEntry<T>> S setSynced() {
-		sync = true;
+	public final <S extends ConfigEntry<T>> S setServerSynced() {
+		if(syncCache != null) throw new IllegalStateException("Client Synced Configs can not Server Sync");
+		serverSync = true;
 		return (S)this;
+	}
+	
+	@SuppressWarnings("unchecked")
+	public final <S extends ConfigEntry<T>> SyncedConfig<S> setClientSynced() {
+		if(serverSync) throw new IllegalStateException("Server Synced Configs can not Client Sync");
+		if(syncCache == null) syncCache = new SyncedConfig<>(() -> copy(), this);
+		return (SyncedConfig<S>)syncCache;
 	}
 	
 	@SuppressWarnings("unchecked")
@@ -246,21 +262,31 @@ public abstract class ConfigEntry<T> {
 	public static interface IArrayConfig {
 		public List<String> getEntries();
 		public List<String> getDefaults();
-		public boolean canSet(List<String> entries);
-		public void set(List<String> entries);
+		public boolean canSetArray(List<String> entries);
+		public void setArray(List<String> entries);
 	}
 	
 	public static class Suggestion {
 		String name;
 		String value;
+		Object extra;
 		
 		public Suggestion(String value) {
-			this(value, value);
+			this(value, value, null);
+		}
+		
+		public Suggestion(String value, Object extra) {
+			this(value, value, extra);
 		}
 		
 		public Suggestion(String name, String value) {
+			this(name, value, null);
+		}
+		
+		public Suggestion(String name, String value, Object extra) {
 			this.name = name;
 			this.value = value;
+			this.extra = extra;;
 		}
 		
 		public String getName() {
@@ -270,16 +296,82 @@ public abstract class ConfigEntry<T> {
 		public String getValue() {
 			return value;
 		}
+		
+		public Object getExtra() {
+			return extra;
+		}
 	}
 	
-	public static enum EntryDataType {
-		BOOLEAN,
-		NUMBER,
-		STRING,
-		CUSTOM;
+	public static abstract class BasicConfigEntry<T> extends ConfigEntry<T> {
+		
+		public BasicConfigEntry(String key, T defaultValue, String... comment) {
+			super(key, defaultValue, comment);
+		}
+		
+		@SuppressWarnings("unchecked")
+		public final <S extends BasicConfigEntry<T>> S addSuggestions(T... values) {
+			for(T value : values) {
+				addSuggestion(serializedValue(MultilinePolicy.DISABLED, value));
+			}
+			return (S)this;
+		}
+		
+		public final <S extends BasicConfigEntry<T>> S addSuggestion(T value) {
+			return addSuggestion(serializedValue(MultilinePolicy.DISABLED, value));
+		}
+		
+		public final <S extends BasicConfigEntry<T>> S addSuggestion(T value, Object extra) {
+			return addSuggestion(extra, serializedValue(MultilinePolicy.DISABLED, value));
+		}
+		
+		public final <S extends BasicConfigEntry<T>> S addSuggestion(String name, T value) {
+			return addSuggestion(name, serializedValue(MultilinePolicy.DISABLED, value));
+		}
+		
+		public final <S extends BasicConfigEntry<T>> S addSuggestion(String name, T value, Object extra) {
+			return addSuggestion(name, serializedValue(MultilinePolicy.DISABLED, value), extra);
+		}
 	}
 	
-	public static class IntValue extends ConfigEntry<Integer> {
+	public static abstract class ArrayConfigEntry<T> extends ConfigEntry<T[]> {
+		
+		public ArrayConfigEntry(String key, T[] defaultValue, String... comment) {
+			super(key, defaultValue, comment);
+		}
+		
+		@SuppressWarnings("unchecked")
+		public final <S extends ArrayConfigEntry<T>> S addSuggestions(T... values) {
+			for(T value : values) {
+				addSuggestion(serializedValue(MultilinePolicy.DISABLED, toArray(value)));
+			}
+			return (S)this;
+		}
+		
+		public final <S extends ArrayConfigEntry<T>> S addSuggestion(T value) {
+			return addSuggestion(serializedValue(MultilinePolicy.DISABLED, toArray(value)));
+		}
+		
+		public final <S extends ArrayConfigEntry<T>> S addSuggestion(T value, Object extra) {
+			return addSuggestion(extra, serializedValue(MultilinePolicy.DISABLED, toArray(value)));
+		}
+		
+		public final <S extends ArrayConfigEntry<T>> S addSuggestion(String name, T value) {
+			return addSuggestion(name, serializedValue(MultilinePolicy.DISABLED, toArray(value)));
+		}
+		
+		public final <S extends ArrayConfigEntry<T>> S addSuggestion(String name, T value, Object extra) {
+			return addSuggestion(name, serializedValue(MultilinePolicy.DISABLED, toArray(value)), extra);
+		}
+		
+		@SuppressWarnings("unchecked")
+		T[] toArray(T input) {
+			T[] result = (T[])Array.newInstance(input.getClass(), 1);
+			result[0] = input;
+			return result;
+		}
+	}
+	
+	public static class IntValue extends BasicConfigEntry<Integer> {
 		private int min = Integer.MIN_VALUE;
 		private int max = Integer.MAX_VALUE;
 		
@@ -305,6 +397,11 @@ public abstract class ConfigEntry<T> {
 			this.min = min;
 			this.max = max;
 			return this;
+		}
+		
+		@Override
+		protected IntValue copy() {
+			return new IntValue(getKey(), getDefault(), getComment()).setRange(min, max);
 		}
 		
 		@Override
@@ -365,8 +462,8 @@ public abstract class ConfigEntry<T> {
 		}
 	}
 	
-	public static class DoubleValue extends ConfigEntry<Double> {
-		private double min = Double.MIN_VALUE;
+	public static class DoubleValue extends BasicConfigEntry<Double> {
+		private double min = -Double.MAX_VALUE;
 		private double max = Double.MAX_VALUE;
 		
 		public DoubleValue(String key, Double defaultValue, String... comment) {
@@ -391,6 +488,11 @@ public abstract class ConfigEntry<T> {
 			this.min = min;
 			this.max = max;
 			return this;
+		}
+		
+		@Override
+		protected DoubleValue copy() {
+			return new DoubleValue(getKey(), getDefault(), getComment()).setRange(min, max);
 		}
 		
 		@Override
@@ -451,13 +553,18 @@ public abstract class ConfigEntry<T> {
 		}
 	}
 	
-	public static class BoolValue extends ConfigEntry<Boolean> {
+	public static class BoolValue extends BasicConfigEntry<Boolean> {
 		public BoolValue(String key, Boolean defaultValue, String... comment) {
 			super(key, defaultValue, comment);
 		}
 		
 		public BoolValue(String key, Boolean defaultValue) {
 			super(key, defaultValue);
+		}
+		
+		@Override
+		protected BoolValue copy() {
+			return new BoolValue(getKey(), getDefault(), getComment());
 		}
 		
 		public boolean get() {
@@ -507,10 +614,20 @@ public abstract class ConfigEntry<T> {
 		public static TempValue parse(String key, String value, String... comment) {
 			return new TempValue(key, value, comment);
 		}
+		
+		@Override
+		public TempValue withFilter(Predicate<String> filter) {
+			throw new UnsupportedOperationException("Filters are not supported with Temp Values");
+		}
+
+		@Override
+		protected TempValue copy() {
+			return new TempValue(getKey(), getDefault(), getComment());
+		}
 	}
 
-	public static class StringValue extends ConfigEntry<String> {
-		Predicate<String> filter;
+	public static class StringValue extends BasicConfigEntry<String> {
+		protected Predicate<String> filter;
 		
 		public StringValue(String key, String defaultValue, String... comment) {
 			super(key, defaultValue, comment);
@@ -523,6 +640,11 @@ public abstract class ConfigEntry<T> {
 		public StringValue withFilter(Predicate<String> filter) {
 			this.filter = filter;
 			return this;
+		}
+		
+		@Override
+		protected StringValue copy() {
+			return new StringValue(getKey(), getDefault(), getComment()).withFilter(filter);
 		}
 		
 		@Override
@@ -570,6 +692,8 @@ public abstract class ConfigEntry<T> {
 	}
 	
 	public static class ArrayValue extends ConfigEntry<String[]> implements IArrayConfig {
+		protected Predicate<String> filter;
+
 		public ArrayValue(String key, String[] defaultValue, String... comment) {
 			super(key, defaultValue, comment);
 		}
@@ -584,6 +708,16 @@ public abstract class ConfigEntry<T> {
 		
 		public ArrayValue(String key) {
 			super(key, new String[]{});
+		}
+		
+		public ArrayValue withFilter(Predicate<String> filter) {
+			this.filter = filter;
+			return this;
+		}
+		
+		@Override
+		protected ArrayValue copy() {
+			return new ArrayValue(getKey(), getDefault(), getComment());
 		}
 		
 		@Override
@@ -612,22 +746,27 @@ public abstract class ConfigEntry<T> {
 		
 		@Override
 		public List<String> getDefaults() {
-			return ObjectArrayList.wrap(getValue());
+			return ObjectArrayList.wrap(getDefault());
 		}
 		
 		@Override
-		public boolean canSet(List<String> entries) {
-			return entries != null;
+		public boolean canSetArray(List<String> entries) {
+			if(entries == null) return false;
+			if(filter == null) return true;
+			for(int i = 0;i<entries.size();i++) {
+				if(!filter.test(entries.get(i))) return false;
+			}
+			return true;
 		}
 		
 		@Override
-		public void set(List<String> entries) {
+		public void setArray(List<String> entries) {
 			set(entries.toArray(new String[entries.size()]));
 		}
 		
 		@Override
 		public String[] parseValue(String value) {
-			return value.isEmpty() ? new String[0] : Helpers.trimArray(value.split(","));
+			return Helpers.splitArray(value, ",");
 		}
 		
 		@Override
@@ -636,7 +775,7 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		public static ArrayValue parse(String key, String value, String... comment) {
-			return new ArrayValue(key, value.isEmpty() ? new String[0] : Helpers.trimArray(value.split(",")), comment);
+			return new ArrayValue(key, Helpers.splitArray(value, ","), comment);
 		}
 		
 		@Override
@@ -657,7 +796,7 @@ public abstract class ConfigEntry<T> {
 		}
 	}
 	
-	public static class EnumValue<E extends Enum<E>> extends ConfigEntry<E> {
+	public static class EnumValue<E extends Enum<E>> extends BasicConfigEntry<E> {
 		private Class<E> enumClass;
 		
 		public EnumValue(String key, E defaultValue, Class<E> enumClass, String... comment) {
@@ -674,12 +813,15 @@ public abstract class ConfigEntry<T> {
 		
 		private void addSuggestions() {
 			for(E value : enumClass.getEnumConstants()) {
-				if(value instanceof ISuggestedEnum) {
-					addSuggestion(((ISuggestedEnum)value).getName(), value);
-					continue;
-				}
-				addSuggestion(value);
+				ISuggestedEnum<E> wrapper = ISuggestedEnum.getWrapper(value);
+				if(wrapper != null) addSuggestion(wrapper.getName(value), value);
+				else addSuggestion(value); 
 			}
+		}
+		
+		@Override
+		protected EnumValue<E> copy() {
+			return new EnumValue<>(getKey(), getDefault(), enumClass, getComment());
 		}
 		
 		@Override
@@ -736,7 +878,7 @@ public abstract class ConfigEntry<T> {
 		}
 	}
 	
-	public static class ParsedValue<T> extends ConfigEntry<T> {
+	public static class ParsedValue<T> extends BasicConfigEntry<T> {
 		IConfigSerializer<T> serializer;
 		
 		public ParsedValue(String key, T defaultValue, IConfigSerializer<T> serializer, String[] comment) {
@@ -750,13 +892,18 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
+		protected ParsedValue<T> copy() {
+			return new ParsedValue<>(getKey(), getDefault(), serializer, getComment());
+		}
+		
+		@Override
 		public char getPrefix() {
 			return 'P';
 		}
 		
 		@Override
-		public EntryDataType getDataType() {
-			return EntryDataType.STRING;
+		public CompoundDataType getDataType() {
+			return serializer.getFormat();
 		}
 		
 		public T get() {
@@ -770,22 +917,25 @@ public abstract class ConfigEntry<T> {
 		
 		@Override
 		public T parseValue(String value) {
-			return serializer.deserialize(value);
-		}
-		
-		@Override
-		public String serializeDefault() {
-			return serializer.serialize(getDefault());
+			return serializer.deserialize(Helpers.splitArray(value, ";"));
 		}
 		
 		@Override
 		protected String serializedValue(MultilinePolicy policy, T value) {
-			return serializer.serialize(value);
+			return Helpers.mergeCompound(serializer.serialize(value));
 		}
-
+		
+		private String buildFormat() {
+			StringJoiner joiner = new StringJoiner(";");
+			for(Map.Entry<String, EntryDataType> entry : serializer.getFormat().getCompound()) {
+				joiner.add(entry.getKey()+"("+Helpers.firstLetterUppercase(entry.getValue().name().toLowerCase())+")");
+			}
+			return joiner.toString();
+		}
+		
 		@Override
 		public String getLimitations() {
-			return "Format: ["+serializer.getFormat()+"], Example: ["+serializer.serialize(serializer.getExample())+"]";
+			return "Format: ["+buildFormat()+"], Example: ["+serializedValue(MultilinePolicy.DISABLED, serializer.getExample())+"]";
 		}
 		
 		@Override

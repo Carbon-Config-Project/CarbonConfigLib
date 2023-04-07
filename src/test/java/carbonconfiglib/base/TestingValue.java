@@ -15,18 +15,17 @@ public class TestingValue {
 		this.fluffyness = fluffyness;
 	}
 	
-	public static TestingValue parse(String value) {
-		String[] split = value.split(";");
-		if(split.length != 3) return null;
+	public static TestingValue parse(String[] value) {
+		if(value.length != 3) return null;
 		try {
-			return new TestingValue(split[0], Integer.parseInt(split[1]), Double.parseDouble(split[2]));
+			return new TestingValue(value[0], Integer.parseInt(value[1]), Double.parseDouble(value[2]));
 		} catch (Exception e) {
 			e.printStackTrace();
 			return null;
 		}
 	}
 	
-	public String serialize() {
-		return name+";"+year+";"+fluffyness;
+	public String[] serialize() {
+		return new String[] {name, Integer.toString(year), Double.toString(fluffyness)};
 	}
 }

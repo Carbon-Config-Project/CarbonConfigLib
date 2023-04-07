@@ -6,44 +6,45 @@ import java.util.function.Predicate;
 
 import carbonconfiglib.api.buffer.IReadBuffer;
 import carbonconfiglib.api.buffer.IWriteBuffer;
+import carbonconfiglib.utils.IEntryDataType.CompoundDataType;
 
 public interface IConfigSerializer<T> {
 	public T getExample();
-	public String getFormat();
+	public CompoundDataType getFormat();
 	public boolean isValid(T value);
 	
-	public T deserialize(String value);
-	public String serialize(T value);
+	public T deserialize(String[] value);
+	public String[] serialize(T value);
 	
 	public T deserialize(IReadBuffer buffer);
 	public void serialize(IWriteBuffer buffer, T value);
 	
-	public static <T> IConfigSerializer<T> noSync(String format, T example, Function<String, T> reader, Function<T, String> writer) {
+	public static <T> IConfigSerializer<T> noSync(CompoundDataType format, T example, Function<String[], T> reader, Function<T, String[]> writer) {
 		return new FunctionWriter<>(format, example, reader, writer, null, null, null);
 	}
 	
-	public static <T> IConfigSerializer<T> noSync(String format, T example, Function<String, T> reader, Function<T, String> writer, Predicate<T> filter) {
+	public static <T> IConfigSerializer<T> noSync(CompoundDataType format, T example, Function<String[], T> reader, Function<T, String[]> writer, Predicate<T> filter) {
 		return new FunctionWriter<>(format, example, reader, writer, filter, null, null);
 	}
 	
-	public static <T> IConfigSerializer<T> withSync(String format, T example, Function<String, T> reader, Function<T, String> writer, Function<IReadBuffer, T> readBuffer, BiConsumer<IWriteBuffer, T> writeBuffer) {
+	public static <T> IConfigSerializer<T> withSync(CompoundDataType format, T example, Function<String[], T> reader, Function<T, String[]> writer, Function<IReadBuffer, T> readBuffer, BiConsumer<IWriteBuffer, T> writeBuffer) {
 		return new FunctionWriter<>(format, example, reader, writer, null, readBuffer, writeBuffer);
 	}
 	
-	public static <T> IConfigSerializer<T> withSync(String format, T example, Function<String, T> reader, Function<T, String> writer, Predicate<T> filter, Function<IReadBuffer, T> readBuffer, BiConsumer<IWriteBuffer, T> writeBuffer) {
+	public static <T> IConfigSerializer<T> withSync(CompoundDataType format, T example, Function<String[], T> reader, Function<T, String[]> writer, Predicate<T> filter, Function<IReadBuffer, T> readBuffer, BiConsumer<IWriteBuffer, T> writeBuffer) {
 		return new FunctionWriter<>(format, example, reader, writer, filter, readBuffer, writeBuffer);
 	}
 	
 	static class FunctionWriter<T> implements IConfigSerializer<T> {
-		String format;
+		CompoundDataType format;
 		T example;
-		Function<String, T> reader;
-		Function<T, String> writer;
+		Function<String[], T> reader;
+		Function<T, String[]> writer;
 		Predicate<T> filter;
 		Function<IReadBuffer, T> readBuffer;
 		BiConsumer<IWriteBuffer, T> writeBuffer;
 		
-		public FunctionWriter(String format, T example, Function<String, T> reader, Function<T, String> writer, Predicate<T> filter, Function<IReadBuffer, T> readBuffer, BiConsumer<IWriteBuffer, T> writeBuffer) {
+		public FunctionWriter(CompoundDataType format, T example, Function<String[], T> reader, Function<T, String[]> writer, Predicate<T> filter, Function<IReadBuffer, T> readBuffer, BiConsumer<IWriteBuffer, T> writeBuffer) {
 			this.format = format;
 			this.example = example;
 			this.reader = reader;
@@ -59,7 +60,7 @@ public interface IConfigSerializer<T> {
 		}
 		
 		@Override
-		public String getFormat() {
+		public CompoundDataType getFormat() {
 			return format;
 		}
 		
@@ -69,12 +70,12 @@ public interface IConfigSerializer<T> {
 		}
 		
 		@Override
-		public T deserialize(String value) {
+		public T deserialize(String[] value) {
 			return reader.apply(value);
 		}
 		
 		@Override
-		public String serialize(T value) {
+		public String[] serialize(T value) {
 			return writer.apply(value);
 		}
 		

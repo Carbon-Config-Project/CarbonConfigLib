@@ -1,10 +1,21 @@
 package carbonconfiglib.utils;
 
 import java.util.Arrays;
+import java.util.StringJoiner;
 
 public class Helpers {
+	private static final String[] EMPTY = new String[0];
+	
 	public static boolean validateString(CharSequence s) {
 		return s == null || s.length() == 0 || s.charAt(0) <= ' ' || s.charAt(s.length() - 1) <= ' ';
+	}
+	
+	public static String firstLetterUppercase(String string) {
+		if(string == null || string.isEmpty()) {
+			return string;
+		}
+		String first = Character.toString(string.charAt(0));
+		return string.replaceFirst(first, first.toUpperCase());
 	}
 	
 	public static String generateIndent(int level) {
@@ -21,11 +32,23 @@ public class Helpers {
 		return inputs;
 	}
 	
+	public static String[] splitArray(String value, String splitter) {
+		return value.isEmpty() ? EMPTY : trimArray(value.split(splitter)); 
+	}
+	
 	public static String[] trimArray(String[] array) {
 		for(int i = 0,m=array.length;i<m;i++) {
 			array[i] = array[i].trim();
 		}
 		return array;
+	}
+	
+	public static String mergeCompound(String[] array) {
+		StringJoiner joiner = new StringJoiner(";");
+		for(String s : array) {
+			joiner.add(s);
+		}
+		return joiner.toString();
 	}
 	
 	public static int clamp(int value, int min, int max) {

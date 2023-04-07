@@ -21,6 +21,8 @@ import it.unimi.dsi.fastutil.chars.Char2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 public final class ConfigHandler {
+	private static final char START_MIN_CHARACTER = 'A';
+	private static final char END_MIN_CHARACTER = 'Z';
 	private final Path cfgDir;
 	private final Path configFile;
 	private final String subFolder;
@@ -70,6 +72,7 @@ public final class ConfigHandler {
 	}
 	
 	public void addParser(char id, IConfigParser parser) {
+		if(id < START_MIN_CHARACTER || id > END_MIN_CHARACTER) throw new IllegalArgumentException("Character must be between "+START_MIN_CHARACTER+" - "+END_MIN_CHARACTER);
 		parsers.putIfAbsent(id, parser);
 	}
 	
@@ -137,7 +140,7 @@ public final class ConfigHandler {
 			return 0;
 		}
 		int extra = 0;
-		if(entryData[2].charAt(0) == '<') {
+		if(entryData[2].length() > 0 && entryData[2].charAt(0) == '<') {
 			if(entryData[2].endsWith(">")) {
 				entryData[2] = entryData[2].substring(1, entryData[2].length()-1);
 			}

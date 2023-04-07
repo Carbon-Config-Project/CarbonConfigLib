@@ -16,6 +16,7 @@ import carbonconfiglib.config.ConfigEntry.StringValue;
 import carbonconfiglib.config.ConfigEntry.TempValue;
 import carbonconfiglib.utils.Helpers;
 import carbonconfiglib.utils.MultilinePolicy;
+import carbonconfiglib.utils.SyncType;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMaps;
@@ -197,14 +198,14 @@ public class ConfigSection {
 		return this;
 	}
 	
-	public void getSyncedEntries(Map<String, ConfigEntry<?>> syncedEntries) {
+	void getSyncedEntries(Map<String, ConfigEntry<?>> syncedEntries, SyncType type) {
 		for (ConfigEntry<?> entry : entries.values()) {
-			if (entry.isSynced()) {
+			if (entry.getSyncType() == type) {
 				syncedEntries.put(getSectionPath() + "." + entry.getKey(), entry);
 			}
 		}
 		for (ConfigSection section : subSections.values()) {
-			section.getSyncedEntries(syncedEntries);
+			section.getSyncedEntries(syncedEntries, type);
 		}
 	}
 	
@@ -213,8 +214,7 @@ public class ConfigSection {
 	}
 	
 	public String serialize(MultilinePolicy policy, int indentationLevel) {
-		if (entries.size() == 0 && subSections.size() == 0)
-			return null;
+		if (entries.size() == 0 && subSections.size() == 0) return null;
 		AtomicInteger written = new AtomicInteger(0);
 		StringBuilder builder = new StringBuilder(parent == null ? "" : ('\n' + Helpers.generateIndent(indentationLevel)));
 		builder.append('[');

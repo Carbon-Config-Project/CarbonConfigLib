@@ -36,8 +36,7 @@ public class FileSystemWatcher {
 	}
 	
 	protected void init(ILogger logger, Path basePath, IConfigChangeListener changedListener) {
-		if (wasInit)
-			return;
+		if (wasInit) return;
 		wasInit = true;
 		this.logger = logger;
 		this.basePath = basePath;

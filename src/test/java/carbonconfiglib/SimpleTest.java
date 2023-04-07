@@ -12,7 +12,9 @@ import carbonconfiglib.config.ConfigSettings;
 import carbonconfiglib.config.FileSystemWatcher;
 import carbonconfiglib.config.ConfigEntry.ArrayValue;
 import carbonconfiglib.config.ConfigEntry.BoolValue;
+import carbonconfiglib.config.ConfigEntry.CompoundDataType;
 import carbonconfiglib.config.ConfigEntry.DoubleValue;
+import carbonconfiglib.config.ConfigEntry.EntryDataType;
 import carbonconfiglib.config.ConfigEntry.EnumValue;
 import carbonconfiglib.config.ConfigEntry.IntValue;
 import carbonconfiglib.config.ConfigEntry.ParsedValue;
@@ -39,7 +41,8 @@ public class SimpleTest {
 		STRINGS = testSection.addString("StringTest", "Testing my StringValue", "Test the String");
 		ARRAY = testSection.addArray("ArrayTest", new String[] {"Testing1", "Testing2", "Testing3", "Testing4", "Testing5", "Testing6", "Testing7", "Testing8", "Testing9", "Testing10"}, "Testing the Array");
 		ENUMS = testSection.addEnum("EnumTest", AutomationType.NONE, AutomationType.class, "Testing the Enum");
-		PARSED = testSection.addParsed("ParseTest", new TestingValue(), IConfigSerializer.noSync("Name;Year;Fluffyness", new TestingValue(), TestingValue::parse, TestingValue::serialize));
+		CompoundDataType type = new CompoundDataType().with("Name", EntryDataType.STRING).with("Year", EntryDataType.NUMBER).with("Fluffyness", EntryDataType.NUMBER);
+		PARSED = testSection.addParsed("ParseTest", new TestingValue(), IConfigSerializer.noSync(type, new TestingValue(), TestingValue::parse, TestingValue::serialize));
 		
 		ConfigHandler handler = WATCHER.createConfig(config, ConfigSettings.withLinePolicy(MultilinePolicy.MULTILINE_IF_TO_LONG));
 		handler.init();
