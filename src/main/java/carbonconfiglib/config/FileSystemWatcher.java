@@ -26,18 +26,16 @@ public class FileSystemWatcher {
 	private Map<Path, ConfigHandler> configs = new Object2ObjectLinkedOpenHashMap<>();
 	private Map<WatchKey, Path> folders = new Object2ObjectLinkedOpenHashMap<>();
 	
-	private boolean wasInit = false;
 	private ILogger logger;
 	private Path basePath;
 	private IConfigChangeListener changeListener;
+	private Object sync = new Object();
 	
 	public FileSystemWatcher(ILogger logger, Path basePath, IConfigChangeListener changedListener) {
 		init(logger, basePath, changedListener);
 	}
 	
 	protected void init(ILogger logger, Path basePath, IConfigChangeListener changedListener) {
-		if (wasInit) return;
-		wasInit = true;
 		this.logger = logger;
 		this.basePath = basePath;
 		this.changeListener = changedListener;
@@ -74,28 +72,28 @@ public class FileSystemWatcher {
 	}
 	
 	public void registerSyncHandler(ConfigHandler handler) {
-		syncedConfigs.add(handler);
-		configsByName.putIfAbsent(handler.getConfigIdentifer(), handler);
+		synchronized(sync) {
+			syncedConfigs.add(handler);
+			configsByName.putIfAbsent(handler.getConfigIdentifer(), handler);
+		}
 	}
 	
 	public void registerConfigHandler(Path configFile, ConfigHandler handler) {
-		if(!wasInit) {
-			return;
-		}
-		if(configs.putIfAbsent(configFile, handler) != null) {
-			logger.warn("tried to register a config that already registered at {} path", configFile);
-			return;
-		}
-		
-		configsByName.putIfAbsent(handler.getConfigIdentifer(), handler);
-		if (!folders.containsValue(configFile.getParent())) {
-			try {
-				folders.put(configFile.getParent().register(watchService, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_MODIFY), configFile.getParent());
-			} catch (IOException e) {
-				logger.fatal("could not register WatchService for directory {}", configFile.getParent());
+		synchronized(sync) {
+			if(configs.putIfAbsent(configFile, handler) != null) {
+				logger.warn("tried to register a config that already registered at {} path", configFile);
+				return;
 			}
+			configsByName.putIfAbsent(handler.getConfigIdentifer(), handler);
+			if (!folders.containsValue(configFile.getParent())) {
+				try {
+					folders.put(configFile.getParent().register(watchService, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_MODIFY), configFile.getParent());
+				} catch (IOException e) {
+					logger.fatal("could not register WatchService for directory {}", configFile.getParent());
+				}
+			}
+			if(changeListener != null) changeListener.onConfigAdded(handler);
 		}
-		if(changeListener != null) changeListener.onConfigAdded(handler);
 	}
 	
 	public ConfigHandler getConfig(String name) {

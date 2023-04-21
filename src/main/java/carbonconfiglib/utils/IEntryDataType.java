@@ -16,7 +16,8 @@ public interface IEntryDataType {
 	
 	public static enum EntryDataType implements IEntryDataType {
 		BOOLEAN,
-		NUMBER,
+		INTEGER,
+		DOUBLE,
 		STRING,
 		CUSTOM;
 		

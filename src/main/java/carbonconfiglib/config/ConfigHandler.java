@@ -22,10 +22,8 @@ import it.unimi.dsi.fastutil.chars.Char2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 public final class ConfigHandler {
-	private static final char START_MIN_CHARACTER = 'A';
-	private static final char END_MIN_CHARACTER = 'Z';
-	private final Path cfgDir;
-	private final Path configFile;
+	private Path cfgDir;
+	private Path configFile;
 	private final String subFolder;
 	private final Config config;
 	private final AutomationType setting;
@@ -59,6 +57,7 @@ public final class ConfigHandler {
 		parsers.put('S', StringValue::parse);
 		parsers.put('A', ArrayValue::parse);
 		parsers.put('E', TempValue::parse);
+		parsers.put('p', TempValue::parse);
 		parsers.put('P', TempValue::parse);
 	}
 	
@@ -73,7 +72,7 @@ public final class ConfigHandler {
 	}
 	
 	public void addParser(char id, IConfigParser parser) {
-		if(id < START_MIN_CHARACTER || id > END_MIN_CHARACTER) throw new IllegalArgumentException("Character must be between "+START_MIN_CHARACTER+" - "+END_MIN_CHARACTER);
+		if((id < 'A' || id > 'Z') && (id < 'a' || id > 'z')) throw new IllegalArgumentException("Character must be [a-zA-Z]");
 		parsers.putIfAbsent(id, parser);
 	}
 	
@@ -98,6 +97,15 @@ public final class ConfigHandler {
 	}
 	
 	public void init() {
+		/**
+		 * TODO Idea how the new loading system should work.
+		 * Instead of a Fixed Path the BaseFolder is a Stack Like system.
+		 * Where the lowest entry (0) is the goal File to be loaded.
+		 * While each entry above 0 (1-x) is basically a default file that should be copied/taken from.
+		 * So if Entry 0 doesn't exist it checks if entry 1 exists and if neither exists we start at entry 1 save that config and then go back down to entry 0 and copy from entry 1
+		 * Meaning we have a layered config where we can poll from.
+		 * Since this affects how the loading works I am not going to implement proxies at the moment for that reason :)
+		 */
 		try {
 			if (Files.notExists(cfgDir)) {
 				Files.createDirectories(cfgDir);
@@ -254,6 +262,6 @@ public final class ConfigHandler {
 	@FunctionalInterface
 	public interface IConfigParser
 	{
-		ParseResult<ConfigEntry<?>, Exception> parse(String key, String value, String[] comment);
+		ParseResult<? extends ConfigEntry<?>> parse(String key, String value, String[] comment);
 	}
 }

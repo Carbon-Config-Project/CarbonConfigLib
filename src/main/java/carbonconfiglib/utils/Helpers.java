@@ -1,5 +1,8 @@
 package carbonconfiglib.utils;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.StringJoiner;
 
@@ -16,6 +19,12 @@ public class Helpers {
 		}
 		String first = Character.toString(string.charAt(0));
 		return string.replaceFirst(first, first.toUpperCase());
+	}
+	
+	public static void ensureFolder(Path folder) throws IOException {
+		if (Files.notExists(folder)) {
+			Files.createDirectories(folder);
+		}
 	}
 
 	public static String generateIndent(int level) {
@@ -58,20 +67,14 @@ public class Helpers {
 	public static double clamp(double value, double min, double max) {
 		return Math.min(Math.max(value, min), max);
 	}
-
-	public static ParseResult<Integer, Exception> parseInt(String value) {
-		try {
-			return ParseResult.of(Integer.parseInt(value));
-		} catch (Exception e) {
-			return ParseResult.of(null, e);
-		}
+	
+	public static ParseResult<Integer> parseInt(String value) {
+		try { return ParseResult.success(Integer.parseInt(value)); }
+		catch (Exception e) { return ParseResult.error(value, e, "Couldn't parse Number"); }
 	}
 
-	public static ParseResult<Double, Exception> parseDouble(String value) {
-		try {
-			return ParseResult.of(Double.parseDouble(value));
-		} catch (Exception e) {
-			return ParseResult.of(null, e);
-		}
+	public static ParseResult<Double> parseDouble(String value) {
+		try { return ParseResult.success(Double.parseDouble(value)); } 
+		catch (Exception e) { return ParseResult.error(value, e, "Couldn't parse Number"); }
 	}
 }

@@ -25,7 +25,7 @@ public class SyncedConfig<T extends ConfigEntry<?>>
 		return mappedEntries.get(id);
 	}
 	
-	public void onSync(IReadBuffer buffer) {
-		mappedEntries.computeIfAbsent(buffer.readUUID(), T -> creator.get()).deserialize(buffer);
+	public void onSync(IReadBuffer buffer, UUID owner) {
+		mappedEntries.computeIfAbsent(owner, T -> creator.get()).deserializeValue(buffer);
 	}
 }

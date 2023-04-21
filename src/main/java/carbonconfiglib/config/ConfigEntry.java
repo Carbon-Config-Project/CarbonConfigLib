@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.StringJoiner;
+import java.util.UUID;
 import java.util.function.Predicate;
 
 import carbonconfiglib.api.IConfigSerializer;
@@ -21,6 +22,7 @@ import carbonconfiglib.utils.MultilinePolicy;
 import carbonconfiglib.utils.ParseResult;
 import carbonconfiglib.utils.SyncType;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectLists;
 
 public abstract class ConfigEntry<T> {
 	private String key;
@@ -66,15 +68,15 @@ public abstract class ConfigEntry<T> {
 		return defaultValue;
 	}
 	
-	public abstract ParseResult<T, Exception> parseValue(String value);
+	public abstract ParseResult<T> parseValue(String value);
 	
-	public boolean canSetValue(String value) {
-		ParseResult<T, Exception> result = parseValue(value);
-		return !result.hasError() && canSet(result.getValue());
+	public ParseResult<Boolean> canSetValue(String value) {
+		ParseResult<T> result = parseValue(value);
+		return result.hasError() ? result.withDefault(false) : canSet(result.getValue());
 	}
 	
-	public boolean canSet(T value) {
-		return value != null;
+	public ParseResult<Boolean> canSet(T value) {
+		return ParseResult.result(value != null, NullPointerException::new, "Value isn't allowed to be null");
 	}
 	
 	public ConfigEntry<T> set(T value) {
@@ -104,7 +106,7 @@ public abstract class ConfigEntry<T> {
 	
 	@SuppressWarnings("unchecked")
 	protected final <S extends ConfigEntry<T>> S addSuggestionInternal(String name, String value, Object extra) {
-		if(!canSetValue(value)) throw new IllegalArgumentException("Value ["+value+"] is not valid. Meaning it can not be a suggestion");
+		if(!canSetValue(value).getValue()) throw new IllegalArgumentException("Value ["+value+"] is not valid. Meaning it can not be a suggestion");
 		suggestions.add(new Suggestion(name, value, extra));
 		return (S)this;
 	}
@@ -179,11 +181,11 @@ public abstract class ConfigEntry<T> {
 	
 	public abstract char getPrefix();
 	
-	public void deserializeValue(String value) {
-		ParseResult<T, Exception> result = parseValue(value);
-		if (!result.hasError()) {
-			set(result.getValue());
-		}
+	public ParseResult<String> deserializeValue(String value) {
+		ParseResult<T> result = parseValue(value);
+		if(result.hasError()) return result.withDefault(value);
+		set(result.getValue());
+		return ParseResult.success(value);
 	}
 	
 	public void resetDefault() {
@@ -262,12 +264,20 @@ public abstract class ConfigEntry<T> {
 	}
 	
 	public abstract void serialize(IWriteBuffer buffer);
-	public abstract void deserialize(IReadBuffer buffer);
+	public void deserialize(IReadBuffer buffer, UUID owner) {
+		if(syncCache != null) {
+			syncCache.onSync(buffer, owner);
+			return;
+		}
+		deserializeValue(buffer);
+	}
+	
+	protected abstract void deserializeValue(IReadBuffer buffer);
 	
 	public static interface IArrayConfig {
 		public List<String> getEntries();
 		public List<String> getDefaults();
-		public boolean canSetArray(List<String> entries);
+		public ParseResult<Boolean> canSetArray(List<String> entries);
 		public void setArray(List<String> entries);
 	}
 	
@@ -416,8 +426,10 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public boolean canSet(Integer value) {
-			return super.canSet(value) && value >= min && value <= max;
+		public ParseResult<Boolean> canSet(Integer value) {
+			ParseResult<Boolean> result = super.canSet(value);
+			if(result.hasError()) return result;
+			return ParseResult.result(value >= min && value <= max, IllegalArgumentException::new, "Value ["+value+"] has to be within ["+min+" ~ "+max+"]");
 		}
 		
 		@Override
@@ -440,7 +452,7 @@ public abstract class ConfigEntry<T> {
 		
 		@Override
 		public EntryDataType getDataType() {
-			return EntryDataType.NUMBER;
+			return EntryDataType.INTEGER;
 		}
 		
 		public int get() {
@@ -448,15 +460,14 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public ParseResult<Integer, Exception> parseValue(String value) {
+		public ParseResult<Integer> parseValue(String value) {
 			return Helpers.parseInt(value);
 		}
 		
-		public static ParseResult<IntValue, Exception> parse(String key, String value, String... comment) {
-			ParseResult<Integer, Exception> result = Helpers.parseInt(value);
-			if (result.hasError())
-				return ParseResult.of(null, result.getError());
-			return ParseResult.of(new IntValue(key, result.getValue(), comment));
+		public static ParseResult<IntValue> parse(String key, String value, String... comment) {
+			ParseResult<Integer> result = Helpers.parseInt(value);
+			if (result.hasError()) return result.withDefault(new IntValue(key, 0, comment));
+			return ParseResult.success(new IntValue(key, result.getValue(), comment));
 		}
 
 		@Override
@@ -465,7 +476,7 @@ public abstract class ConfigEntry<T> {
 		}
 
 		@Override
-		public void deserialize(IReadBuffer buffer) {
+		public void deserializeValue(IReadBuffer buffer) {
 			set(buffer.readInt());
 		}
 	}
@@ -504,8 +515,10 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public boolean canSet(Double value) {
-			return super.canSet(value) && value >= min && value <= max;
+		public ParseResult<Boolean> canSet(Double value) {
+			ParseResult<Boolean> result = super.canSet(value);
+			if(result.hasError()) return result;
+			return ParseResult.result(value >= min && value <= max, IllegalArgumentException::new, "Value ["+value+"] has to be within ["+min+" ~ "+max+"]");
 		}
 		
 		@Override
@@ -521,7 +534,7 @@ public abstract class ConfigEntry<T> {
 		
 		@Override
 		public EntryDataType getDataType() {
-			return EntryDataType.NUMBER;
+			return EntryDataType.DOUBLE;
 		}
 		
 		public double get() {
@@ -542,12 +555,14 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public ParseResult<Double, Exception> parseValue(String value) {
+		public ParseResult<Double> parseValue(String value) {
 			return Helpers.parseDouble(value);
 		}
 		
-		public static DoubleValue parse(String key, String value, String... comment) {
-			return new DoubleValue(key, Double.parseDouble(value), comment);
+		public static ParseResult<DoubleValue> parse(String key, String value, String... comment) {
+			ParseResult<Double> result = Helpers.parseDouble(value);
+			if (result.hasError()) return result.withDefault(new DoubleValue(key, 0D, comment));
+			return ParseResult.success(new DoubleValue(key, result.getValue(), comment));
 		}
 		
 		@Override
@@ -556,7 +571,7 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public void deserialize(IReadBuffer buffer) {
+		public void deserializeValue(IReadBuffer buffer) {
 			set(buffer.readDouble());
 		}
 	}
@@ -595,12 +610,12 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public ParseResult<Boolean, Exception> parseValue(String value) {
-			return ParseResult.of(Boolean.parseBoolean(value));
+		public ParseResult<Boolean> parseValue(String value) {
+			return ParseResult.success(Boolean.parseBoolean(value));
 		}
 		
-		public static BoolValue parse(String key, String value, String... comment) {
-			return new BoolValue(key, Boolean.parseBoolean(value), comment);
+		public static ParseResult<BoolValue> parse(String key, String value, String... comment) {
+			return ParseResult.success(new BoolValue(key, Boolean.parseBoolean(value), comment));
 		}
 		
 		@Override
@@ -609,7 +624,7 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public void deserialize(IReadBuffer buffer) {
+		public void deserializeValue(IReadBuffer buffer) {
 			set(buffer.readBoolean());
 		}
 	}
@@ -619,8 +634,8 @@ public abstract class ConfigEntry<T> {
 			super(key, defaultValue, comment);
 		}
 		
-		public static TempValue parse(String key, String value, String... comment) {
-			return new TempValue(key, value, comment);
+		public static ParseResult<TempValue> parseTemp(String key, String value, String... comment) {
+			return ParseResult.success(new TempValue(key, value, comment));
 		}
 		
 		@Override
@@ -675,17 +690,19 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public boolean canSet(String value) {
-			return value != null && (filter == null || filter.test(value));
+		public ParseResult<Boolean> canSet(String value) {
+			if(value == null) return ParseResult.partial(false, NullPointerException::new, "Value isn't allowed to be null");
+			if(filter == null || filter.test(value)) return ParseResult.success(true);
+			return ParseResult.partial(false, IllegalStateException::new, "Value ["+value+"] isn't valid");
 		}
 		
 		@Override
-		public ParseResult<String, Exception> parseValue(String value) {
-			return ParseResult.of(filter == null || filter.test(value) ? value : null);
+		public ParseResult<String> parseValue(String value) {
+			return ParseResult.successOrError(value, filter == null || filter.test(value), IllegalArgumentException::new, "Value ["+value+"] is not valid");
 		}
 		
-		public static StringValue parse(String key, String value, String... comment) {
-			return new StringValue(key, value, comment);
+		public static ParseResult<StringValue> parse(String key, String value, String... comment) {
+			return ParseResult.success(new StringValue(key, value, comment));
 		}
 		
 		@Override
@@ -694,7 +711,7 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public void deserialize(IReadBuffer buffer) {
+		public void deserializeValue(IReadBuffer buffer) {
 			set(buffer.readString());
 		}
 	}
@@ -758,13 +775,15 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public boolean canSetArray(List<String> entries) {
-			if(entries == null) return false;
-			if(filter == null) return true;
-			for(int i = 0;i<entries.size();i++) {
-				if(!filter.test(entries.get(i))) return false;
+		public ParseResult<Boolean> canSetArray(List<String> entries) {
+			if(entries == null) return ParseResult.partial(false, NullPointerException::new, "Value isn't allowed to be null");
+			if(filter != null) {
+				for(int i = 0;i<entries.size();i++) {
+					if(filter.test(entries.get(i))) continue;
+					return ParseResult.partial(false, IllegalArgumentException::new, "Value ["+entries.get(i)+"] isn't valid");
+				}
 			}
-			return true;
+			return ParseResult.success(true);
 		}
 		
 		@Override
@@ -773,8 +792,8 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public ParseResult<String[], Exception> parseValue(String value) {
-			return ParseResult.of(Helpers.splitArray(value, ","));
+		public ParseResult<String[]> parseValue(String value) {
+			return ParseResult.success(Helpers.splitArray(value, ","));
 		}
 		
 		@Override
@@ -782,8 +801,8 @@ public abstract class ConfigEntry<T> {
 			return serializeArray(policy, value);
 		}
 		
-		public static ArrayValue parse(String key, String value, String... comment) {
-			return new ArrayValue(key, Helpers.splitArray(value, ","), comment);
+		public static ParseResult<ArrayValue> parse(String key, String value, String... comment) {
+			return ParseResult.success(new ArrayValue(key, Helpers.splitArray(value, ","), comment));
 		}
 		
 		@Override
@@ -795,7 +814,7 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public void deserialize(IReadBuffer buffer) {
+		public void deserializeValue(IReadBuffer buffer) {
 			String[] val = new String[buffer.readVarInt()];
 			for (int i = 0; i < val.length; i++) {
 				val[i] = buffer.readString();
@@ -848,8 +867,8 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public boolean canSet(E value) {
-			return enumClass.isInstance(value);
+		public ParseResult<Boolean> canSet(E value) {
+			return ParseResult.result(enumClass.isInstance(value), IllegalArgumentException::new, "Value must be one of the following: "+Arrays.toString(toArray()));
 		}
 		
 		public E get() {
@@ -871,13 +890,9 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public ParseResult<E, Exception> parseValue(String value) {
-			try {
-				return ParseResult.of(Enum.valueOf(enumClass, value));
-			}
-			catch (Exception e) {
-				return ParseResult.of(null, e);
-			}
+		public ParseResult<E> parseValue(String value) {
+			try { return ParseResult.success(Enum.valueOf(enumClass, value)); }
+			catch (Exception e) { return ParseResult.error(value, e); }
 		}
 		
 		@Override
@@ -886,7 +901,7 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public void deserialize(IReadBuffer buffer) {
+		public void deserializeValue(IReadBuffer buffer) {
 			set(buffer.readEnum(enumClass));
 		}
 	}
@@ -911,7 +926,7 @@ public abstract class ConfigEntry<T> {
 		
 		@Override
 		public char getPrefix() {
-			return 'P';
+			return 'p';
 		}
 		
 		@Override
@@ -924,13 +939,15 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public boolean canSet(T value) {
+		public ParseResult<Boolean> canSet(T value) {
+			ParseResult<Boolean> result = super.canSet(value);
+			if(result.hasError()) return result;
 			return serializer.isValid(value);
 		}
 		
 		@Override
-		public ParseResult<T, Exception> parseValue(String value) {
-			return ParseResult.of(serializer.deserialize(Helpers.splitArray(value, ";")));
+		public ParseResult<T> parseValue(String value) {
+			return serializer.deserialize(Helpers.splitArray(value, ";"));
 		}
 		
 		@Override
@@ -957,8 +974,140 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public void deserialize(IReadBuffer buffer) {
+		public void deserializeValue(IReadBuffer buffer) {
 			set(serializer.deserialize(buffer));
+		}
+	}
+	
+	public static class ParsedArray<T> extends ConfigEntry<List<T>> implements IArrayConfig {
+		IConfigSerializer<T> serializer;
+
+		public ParsedArray(String key, List<T> defaultValue, IConfigSerializer<T> serializer, String... comment) {
+			super(key, defaultValue, comment);
+			this.serializer = serializer;
+		}
+		
+		public ParsedArray(String key, List<T> defaultValue, IConfigSerializer<T> serializer) {
+			super(key, defaultValue);
+			this.serializer = serializer;
+		}
+
+		@Override
+		protected ParsedArray<T> copy() {
+			return new ParsedArray<>(getKey(), getValue(), serializer, getComment());
+		}
+
+		@Override
+		public ParseResult<List<T>> parseValue(String value) {
+			List<T> result = new ObjectArrayList<>();
+			for(String s : Helpers.splitArray(value, ",")) {
+				ParseResult<T> entry = serializer.deserialize(Helpers.splitArray(s, ";"));
+				if(entry.isValid()) result.add(entry.getValue());
+			}
+			return ParseResult.success(result);
+		}
+		
+		@Override
+		protected String serializedValue(MultilinePolicy policy, List<T> value) {
+			String[] result = new String[value.size()];
+			for(int i = 0,m=value.size();i<m;i++) {
+				result[i] = Helpers.mergeCompound(serializer.serialize(value.get(i)));
+			}
+			return serializeArray(policy, result);
+		}
+		
+		@Override
+		public ParseResult<Boolean> canSet(List<T> value) {
+			if(value == null) return ParseResult.partial(false, NullPointerException::new, "Value isn't allowed to be null");
+			for(int i = 0,m=value.size();i<m;i++) {
+				T entry = value.get(i);
+				if(entry == null) return ParseResult.partial(false, NullPointerException::new, "Value isn't allowed to be null");
+				ParseResult<Boolean> result = serializer.isValid(entry);
+				if(!result.getValue()) return result;
+			}
+			return ParseResult.success(true);
+		}
+		
+		@Override
+		public List<String> getEntries() {
+			List<String> output = new ObjectArrayList<>();
+			for(T entry : getValue()) {
+				output.add(Helpers.mergeCompound(this.serializer.serialize(entry)));
+			}
+			return output;
+		}
+
+		@Override
+		public List<String> getDefaults() {
+			List<String> output = new ObjectArrayList<>();
+			for(T entry : getDefault()) {
+				output.add(Helpers.mergeCompound(this.serializer.serialize(entry)));
+			}
+			return output;
+		}
+
+		@Override
+		public ParseResult<Boolean> canSetArray(List<String> entries) {
+			if(entries == null) return ParseResult.partial(false, NullPointerException::new, "Value isn't allowed to be null");
+			for(int i = 0,m=entries.size();i<m;i++) {
+				ParseResult<T> result = serializer.deserialize(Helpers.splitArray(entries.get(i), ";"));
+				if(result.hasError()) return result.onlyError();
+				ParseResult<Boolean> valid = serializer.isValid(result.getValue());
+				if(valid.hasError()) return valid;
+			}
+			return ParseResult.success(true);
+		}
+
+		@Override
+		public void setArray(List<String> entries) {
+			StringJoiner joiner = new StringJoiner(",");
+			for(String s : entries) {
+				joiner.add(s);
+			}
+			deserializeValue(joiner.toString());
+		}
+		
+		@Override
+		public IEntryDataType getDataType() {
+			return serializer.getFormat();
+		}
+
+		@Override
+		public char getPrefix() {
+			return 'P';
+		}
+
+		private String buildFormat() {
+			StringJoiner joiner = new StringJoiner(";");
+			for(Map.Entry<String, EntryDataType> entry : serializer.getFormat().getCompound()) {
+				joiner.add(entry.getKey()+"("+Helpers.firstLetterUppercase(entry.getValue().name().toLowerCase())+")");
+			}
+			return joiner.toString();
+		}
+		
+		@Override
+		public String getLimitations() {
+			return "Format: ["+buildFormat()+"], Example: ["+serializedValue(MultilinePolicy.DISABLED, ObjectLists.singleton(serializer.getExample()))+"]";
+		}
+
+		@Override
+		public void serialize(IWriteBuffer buffer) {
+			List<T> values = getValue();
+			buffer.writeVarInt(values.size());
+			for(int i = 0,m=values.size();i<m;i++) {
+				serializer.serialize(buffer, values.get(i));
+			}
+		}
+
+		@Override
+		public void deserializeValue(IReadBuffer buffer) {
+			List<T> values = new ObjectArrayList<>();
+			int size = buffer.readVarInt();
+			for(int i = 0;i<size;i++) {
+				T value = serializer.deserialize(buffer);
+				if(value != null) values.add(value);
+			}
+			set(values);
 		}
 	}
 }

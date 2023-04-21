@@ -11,6 +11,7 @@ import carbonconfiglib.config.ConfigEntry.BoolValue;
 import carbonconfiglib.config.ConfigEntry.DoubleValue;
 import carbonconfiglib.config.ConfigEntry.EnumValue;
 import carbonconfiglib.config.ConfigEntry.IntValue;
+import carbonconfiglib.config.ConfigEntry.ParsedArray;
 import carbonconfiglib.config.ConfigEntry.ParsedValue;
 import carbonconfiglib.config.ConfigEntry.StringValue;
 import carbonconfiglib.config.ConfigEntry.TempValue;
@@ -116,6 +117,14 @@ public class ConfigSection {
 	
 	public <T> ParsedValue<T> addParsed(String key, T value, IConfigSerializer<T> parsers) {
 		return add(new ParsedValue<T>(key, value, parsers));
+	}
+	
+	public <T> ParsedArray<T> addParsedArray(String key, List<T> value, IConfigSerializer<T> parsers, String... comment) {
+		return add(new ParsedArray<T>(key, value, parsers, comment));
+	}
+	
+	public <T> ParsedArray<T> addParsedArray(String key, List<T> value, IConfigSerializer<T> parsers) {
+		return add(new ParsedArray<T>(key, value, parsers));
 	}
 	
 	public ConfigSection addSubSection(String name) {
