@@ -171,6 +171,17 @@ public class ConfigSection {
 		return new ObjectArrayList<>(entries.values());
 	}
 	
+	protected ConfigSection copy() {
+		ConfigSection copy = new ConfigSection(name);
+		for(ConfigSection sub : subSections.values()) {
+			copy.add(sub.copy());
+		}
+		for(ConfigEntry<?> entry : entries.values()) {
+			copy.add(entry.copy());
+		}
+		return copy;
+	}
+	
 	public void resetDefault() {
 		subSections.values().forEach(ConfigSection::resetDefault);
 		entries.values().forEach(ConfigEntry::resetDefault);

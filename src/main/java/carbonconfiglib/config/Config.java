@@ -62,6 +62,14 @@ public class Config {
 		return name;
 	}
 	
+	public Config copy() {
+		Config config = new Config(name);
+		for(ConfigSection sub : sections.values()) {
+			config.add(sub.copy());
+		}
+		return config;
+	}
+	
 	public void resetDefault() {
 		sections.values().forEach(ConfigSection::resetDefault);
 	}
