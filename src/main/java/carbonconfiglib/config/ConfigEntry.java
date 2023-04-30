@@ -18,6 +18,7 @@ import carbonconfiglib.utils.Helpers;
 import carbonconfiglib.utils.IEntryDataType;
 import carbonconfiglib.utils.IEntryDataType.CompoundDataType;
 import carbonconfiglib.utils.IEntryDataType.EntryDataType;
+import carbonconfiglib.utils.IEntryDataType.SimpleDataType;
 import carbonconfiglib.utils.MultilinePolicy;
 import carbonconfiglib.utils.ParseResult;
 import carbonconfiglib.utils.SyncType;
@@ -451,8 +452,8 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public EntryDataType getDataType() {
-			return EntryDataType.INTEGER;
+		public SimpleDataType getDataType() {
+			return EntryDataType.INTEGER.toSimpleType();
 		}
 		
 		public int get() {
@@ -533,8 +534,8 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public EntryDataType getDataType() {
-			return EntryDataType.DOUBLE;
+		public SimpleDataType getDataType() {
+			return EntryDataType.DOUBLE.toSimpleType();
 		}
 		
 		public double get() {
@@ -600,8 +601,8 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public EntryDataType getDataType() {
-			return EntryDataType.BOOLEAN;
+		public SimpleDataType getDataType() {
+			return EntryDataType.BOOLEAN.toSimpleType();
 		}
 		
 		@Override
@@ -676,8 +677,8 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public EntryDataType getDataType() {
-			return EntryDataType.STRING;
+		public SimpleDataType getDataType() {
+			return EntryDataType.STRING.toSimpleType();
 		}
 		
 		public String get() {
@@ -751,8 +752,8 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public EntryDataType getDataType() {
-			return EntryDataType.STRING;
+		public SimpleDataType getDataType() {
+			return EntryDataType.STRING.toSimpleType();
 		}
 		
 		public String[] get() {
@@ -862,8 +863,8 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public EntryDataType getDataType() {
-			return EntryDataType.STRING;
+		public SimpleDataType getDataType() {
+			return EntryDataType.STRING.toSimpleType();
 		}
 		
 		@Override
