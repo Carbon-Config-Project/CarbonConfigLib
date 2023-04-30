@@ -6,7 +6,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
+import carbonconfiglib.api.IConfigProxy;
 import carbonconfiglib.api.ILogger;
+import carbonconfiglib.api.SimpleConfigProxy;
 import carbonconfiglib.config.ConfigEntry.ArrayValue;
 import carbonconfiglib.config.ConfigEntry.BoolValue;
 import carbonconfiglib.config.ConfigEntry.DoubleValue;
@@ -24,22 +26,25 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 public final class ConfigHandler {
 	private Path cfgDir;
 	private Path configFile;
+	private boolean isLoaded;
 	private final String subFolder;
 	private final Config config;
 	private final AutomationType setting;
 	private final MultilinePolicy policy;
-	
+
+	private final IConfigProxy proxy;
+
 	private final ILogger logger;
 	private FileSystemWatcher owner;
-	
+
 	private List<Runnable> loadedListeners = new ObjectArrayList<>();
 	private Char2ObjectMap<IConfigParser> parsers = new Char2ObjectOpenHashMap<>();
-	
+
 	ConfigHandler(Config config, ConfigSettings settings) {
-		this(settings.getSubFolder(), settings.getBaseFolder(), settings.getLogger(), config, settings.getAutomationType(), settings.getMultilinePolicy());
+		this(settings.getSubFolder(), new SimpleConfigProxy(settings.getBaseFolder()), settings.getLogger(), config, settings.getAutomationType(), settings.getMultilinePolicy());
 	}
-	
-	ConfigHandler(String subFolder, Path baseFolder, ILogger logger, Config config, AutomationType setting, MultilinePolicy policy) {
+
+	ConfigHandler(String subFolder, IConfigProxy proxy, ILogger logger, Config config, AutomationType setting, MultilinePolicy policy) {
 		this.config = config;
 		String tmp = subFolder.trim().replace("\\\\", "/").replace("\\", "/");
 		if (tmp.endsWith("/")) {
@@ -49,8 +54,9 @@ public final class ConfigHandler {
 		this.logger = logger;
 		this.policy = policy;
 		this.setting = setting;
-		cfgDir = subFolder != null && !subFolder.isEmpty() ? baseFolder.resolve(subFolder) : baseFolder;
-		configFile = cfgDir.resolve(config.getName().concat(".cfg"));
+		this.proxy = proxy;
+//		cfgDir = !subFolder.isEmpty() ? baseFolder.resolve(subFolder) : baseFolder;
+//		configFile = cfgDir.resolve(config.getName().concat(".cfg"));
 		parsers.put('I', IntValue::parse);
 		parsers.put('D', DoubleValue::parse);
 		parsers.put('B', BoolValue::parse);
@@ -60,44 +66,44 @@ public final class ConfigHandler {
 		parsers.put('p', TempValue::parse);
 		parsers.put('P', TempValue::parse);
 	}
-	
+
 	ConfigHandler setOwner(FileSystemWatcher owner) {
 		this.owner = owner;
 		if(owner != null) owner.onConfigCreated(this);
 		return this;
 	}
-	
+
 	public void addTempParser(char id) {
 		addParser(id, TempValue::parse);
 	}
-	
+
 	public void addParser(char id, IConfigParser parser) {
 		if((id < 'A' || id > 'Z') && (id < 'a' || id > 'z')) throw new IllegalArgumentException("Character must be [a-zA-Z]");
 		parsers.putIfAbsent(id, parser);
 	}
-	
+
 	public Config getConfig() {
 		return config;
 	}
-	
+
 	public String getSubFolder() {
 		return subFolder;
 	}
-	
+
 	public Path getCfgDir() {
 		return cfgDir;
 	}
-	
+
 	public Path getConfigFile() {
 		return configFile;
 	}
-	
+
 	public String getConfigIdentifer() {
 		return subFolder + "/" + config.getName();
 	}
-	
+
 	public void init() {
-		/**
+		/*
 		 * TODO Idea how the new loading system should work.
 		 * Instead of a Fixed Path the BaseFolder is a Stack Like system.
 		 * Where the lowest entry (0) is the goal File to be loaded.
@@ -107,6 +113,13 @@ public final class ConfigHandler {
 		 * Since this affects how the loading works I am not going to implement proxies at the moment for that reason :)
 		 */
 		try {
+			List<Path> baseFolders = proxy.getBasePaths();
+			if (baseFolders.isEmpty())
+				throw new IllegalStateException("IConfigProxy needs to provide at least one basepath");
+
+			cfgDir = !subFolder.isEmpty() ? baseFolders.get(0).resolve(subFolder) : baseFolders.get(0);
+			configFile = cfgDir.resolve(config.getName().concat(".cfg"));
+
 			if (Files.notExists(cfgDir)) {
 				Files.createDirectories(cfgDir);
 			}
@@ -123,21 +136,23 @@ public final class ConfigHandler {
 					owner.registerConfigHandler(configFile, this);
 				}
 			}
+
+			isLoaded = true;
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
-	
+
 	public void addLoadedListener(Runnable listener) {
 		loadedListeners.add(listener);
 	}
-	
+
 	public void onSynced() {
 		for (Runnable r : loadedListeners) {
 			r.run();
 		}
 	}
-	
+
 	private int handleEntry(ConfigSection currentSection, List<String> lines, int index, String line, String[] comment) {
 		if (currentSection == null) {
 			logger.error("config entry not in section: {}", line);
@@ -152,8 +167,7 @@ public final class ConfigHandler {
 		if(entryData[2].length() > 0 && entryData[2].charAt(0) == '<') {
 			if(entryData[2].endsWith(">")) {
 				entryData[2] = entryData[2].substring(1, entryData[2].length()-1);
-			}
-			else {
+			} else {
 				StringBuilder builder = new StringBuilder();
 				extra += findString(entryData[2], lines, index, builder);
 				entryData[2] = builder.toString();
@@ -195,7 +209,7 @@ public final class ConfigHandler {
 		}
 		return extra;
 	}
-	
+
 	private int findString(String base, List<String> lines, int index, StringBuilder builder) {
 		builder.append(base.substring(1));
 		int stepsDone = 0;
@@ -216,41 +230,47 @@ public final class ConfigHandler {
 		}
 		return stepsDone;
 	}
-	
+
 	public boolean load() {
 		try {
-			List<String> lines = Files.readAllLines(configFile);
-			ConfigSection currentSection = null;
-			List<String> comments = new ObjectArrayList<>();
-			for (int i = 0,m=lines.size();i<m;i++) {
-				String line = lines.get(i).trim();
-				if (line.length() == 0)
-					continue;
-				switch (line.charAt(0)) {
-					case '[':
-						currentSection = config.getSectionRecursive(line.substring(1, line.length() - 1).split("\\."));
-						comments.clear();
-						break;
-					case '#':
-						if(line.charAt(1) == '\u200b') break;
-						comments.add(line.substring(1).trim());
-						break;
-					default:
-						i += handleEntry(currentSection, lines, i, line, comments.toArray(new String[comments.size()]));
-						comments.clear();
-						break;
-				}
+			load(this, config, Files.readAllLines(configFile));
+
+			for (Runnable r : loadedListeners) {
+				r.run();
 			}
-		} catch (IOException e) {
-			e.printStackTrace();
+
+			return true;
+		} catch (IOException ex) {
+			return false;
 		}
-		
-		for (Runnable r : loadedListeners) {
-			r.run();
+	}
+
+	public static boolean load(ConfigHandler handler, Config output, List<String> linesToParse) {
+		ConfigSection currentSection = null;
+		List<String> comments = new ObjectArrayList<>();
+		for (int i = 0,m=linesToParse.size();i<m;i++) {
+			String line = linesToParse.get(i).trim();
+			if (line.length() == 0)
+				continue;
+			switch (line.charAt(0)) {
+				case '[':
+					currentSection = output.getSectionRecursive(line.substring(1, line.length() - 1).split("\\."));
+					comments.clear();
+					break;
+				case '#':
+					if(line.charAt(1) == '\u200b') break;
+					comments.add(line.substring(1).trim());
+					break;
+				default:
+					i += handler.handleEntry(currentSection, linesToParse, i, line, comments.toArray(new String[comments.size()]));
+					comments.clear();
+					break;
+			}
 		}
+
 		return true;
 	}
-	
+
 	public void save() {
 		try (BufferedWriter writer = Files.newBufferedWriter(configFile)) {
 			writer.write(config.serialize(policy));
@@ -258,7 +278,7 @@ public final class ConfigHandler {
 			e.printStackTrace();
 		}
 	}
-	
+
 	@FunctionalInterface
 	public interface IConfigParser
 	{
