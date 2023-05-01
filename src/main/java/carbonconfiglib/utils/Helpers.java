@@ -1,8 +1,8 @@
 package carbonconfiglib.utils;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
 import java.util.StringJoiner;
 
@@ -21,12 +21,19 @@ public class Helpers {
 		return string.replaceFirst(first, first.toUpperCase());
 	}
 	
-	public static void ensureFolder(Path folder) throws IOException {
+	public static void ensureFolder(Path folder) {
 		if (Files.notExists(folder)) {
-			Files.createDirectories(folder);
+			try { Files.createDirectories(folder); }
+			catch(Exception e) { e.printStackTrace(); }
 		}
 	}
-
+	
+	public static void copyFile(Path from, Path to) {
+		ensureFolder(to.getParent());
+		try { Files.copy(from, to, StandardCopyOption.REPLACE_EXISTING); }
+		catch(Exception e) { e.printStackTrace(); }
+	}
+	
 	public static String generateIndent(int level) {
 		char[] arr = new char[level * 2];
 		Arrays.fill(arr, ' ');

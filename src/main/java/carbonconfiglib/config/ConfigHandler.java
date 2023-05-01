@@ -31,19 +31,19 @@ public final class ConfigHandler {
 	private final Config config;
 	private final AutomationType setting;
 	private final MultilinePolicy policy;
-
+	
 	private final IConfigProxy proxy;
-
+	
 	private final ILogger logger;
 	private FileSystemWatcher owner;
-
+	
 	private List<Runnable> loadedListeners = new ObjectArrayList<>();
 	private Char2ObjectMap<IConfigParser> parsers = new Char2ObjectOpenHashMap<>();
-
+	
 	ConfigHandler(Config config, ConfigSettings settings) {
 		this(settings.getSubFolder(), new SimpleConfigProxy(settings.getBaseFolder()), settings.getLogger(), config, settings.getAutomationType(), settings.getMultilinePolicy());
 	}
-
+	
 	ConfigHandler(String subFolder, IConfigProxy proxy, ILogger logger, Config config, AutomationType setting, MultilinePolicy policy) {
 		this.config = config;
 		String tmp = subFolder.trim().replace("\\\\", "/").replace("\\", "/");
@@ -66,93 +66,113 @@ public final class ConfigHandler {
 		parsers.put('p', TempValue::parse);
 		parsers.put('P', TempValue::parse);
 	}
-
+	
 	ConfigHandler setOwner(FileSystemWatcher owner) {
 		this.owner = owner;
 		if(owner != null) owner.onConfigCreated(this);
 		return this;
 	}
-
+	
 	public void addTempParser(char id) {
 		addParser(id, TempValue::parse);
 	}
-
+	
 	public void addParser(char id, IConfigParser parser) {
 		if((id < 'A' || id > 'Z') && (id < 'a' || id > 'z')) throw new IllegalArgumentException("Character must be [a-zA-Z]");
 		parsers.putIfAbsent(id, parser);
 	}
-
+	
 	public Config getConfig() {
 		return config;
 	}
-
+	
 	public String getSubFolder() {
 		return subFolder;
 	}
-
+	
+	public boolean isLoaded() {
+		return isLoaded;
+	}
+	
 	public Path getCfgDir() {
 		return cfgDir;
 	}
-
+	
 	public Path getConfigFile() {
 		return configFile;
 	}
-
+	
 	public String getConfigIdentifer() {
 		return subFolder + "/" + config.getName();
 	}
-
-	public void init() {
-		/*
-		 * TODO Idea how the new loading system should work.
-		 * Instead of a Fixed Path the BaseFolder is a Stack Like system.
-		 * Where the lowest entry (0) is the goal File to be loaded.
-		 * While each entry above 0 (1-x) is basically a default file that should be copied/taken from.
-		 * So if Entry 0 doesn't exist it checks if entry 1 exists and if neither exists we start at entry 1 save that config and then go back down to entry 0 and copy from entry 1
-		 * Meaning we have a layered config where we can poll from.
-		 * Since this affects how the loading works I am not going to implement proxies at the moment for that reason :)
-		 */
-		try {
-			List<Path> baseFolders = proxy.getBasePaths();
-			if (baseFolders.isEmpty())
-				throw new IllegalStateException("IConfigProxy needs to provide at least one basepath");
-
-			cfgDir = !subFolder.isEmpty() ? baseFolders.get(0).resolve(subFolder) : baseFolders.get(0);
-			configFile = cfgDir.resolve(config.getName().concat(".cfg"));
-
-			if (Files.notExists(cfgDir)) {
-				Files.createDirectories(cfgDir);
+	
+	public void register() {
+		if(owner != null) {
+			owner.registerConfigHandler(this);
+			if(!proxy.isDynamicProxy()) {
+				load();
 			}
-			if (Files.notExists(configFile)) {
-				save();
-			} else if(load()) {
-				save();
-			}
-			if(owner != null) {
-				if(setting.isAutoSync()) {
-					owner.registerSyncHandler(this);
-				}
-				if (setting.isAutoReload()) {
-					owner.registerConfigHandler(configFile, this);
-				}
-			}
-
-			isLoaded = true;
-		} catch (IOException e) {
-			e.printStackTrace();
 		}
 	}
-
+	
+	public void load() {
+		findConfigFile();
+		if(owner != null) {
+			if(setting.isAutoSync()) {
+				owner.registerSyncHandler(this);
+			}
+			if(setting.isAutoReload()) {
+				owner.registerReloadHandler(configFile, this);
+			}
+		}
+		if(loadInternally()) {
+			save();
+		}
+		isLoaded = true;
+	}
+	
+	public void unload() {
+		isLoaded = false;
+		if(owner != null && setting.isAutoReload()) {
+			owner.unregisterReloadHandler(configFile);
+		}
+	}
+	
+	private void findConfigFile() {
+		List<Path> baseFolders = proxy.getBasePaths();
+		if(baseFolders.isEmpty()) throw new IllegalStateException("Proxy has no Folders");
+		if(baseFolders.size() == 1) {
+			configFile = createConfigFile(baseFolders.get(0));
+			cfgDir = configFile.getParent();
+			Helpers.ensureFolder(cfgDir);
+			return;
+		}
+		
+		for(int i = baseFolders.size()-1,m=i;i>=1;i--) {
+			Path file = createConfigFile(baseFolders.get(i));
+			if(Files.notExists(file)) {
+				if(i == m) save(file);
+				else Helpers.copyFile(file, createConfigFile(baseFolders.get(i-1)));
+			}
+		}
+		configFile = createConfigFile(baseFolders.get(0));
+		cfgDir = configFile.getParent();
+	}
+	
+	private Path createConfigFile(Path baseFolder) {
+		return (!subFolder.isEmpty() ? baseFolder.resolve(subFolder) : baseFolder).resolve(config.getName().concat(".cfg"));
+	}
+	
 	public void addLoadedListener(Runnable listener) {
 		loadedListeners.add(listener);
 	}
-
+	
 	public void onSynced() {
 		for (Runnable r : loadedListeners) {
 			r.run();
 		}
 	}
-
+	
 	private int handleEntry(ConfigSection currentSection, List<String> lines, int index, String line, String[] comment) {
 		if (currentSection == null) {
 			logger.error("config entry not in section: {}", line);
@@ -209,7 +229,7 @@ public final class ConfigHandler {
 		}
 		return extra;
 	}
-
+	
 	private int findString(String base, List<String> lines, int index, StringBuilder builder) {
 		builder.append(base.substring(1));
 		int stepsDone = 0;
@@ -230,21 +250,19 @@ public final class ConfigHandler {
 		}
 		return stepsDone;
 	}
-
-	public boolean load() {
+	
+	private boolean loadInternally() {
 		try {
 			load(this, config, Files.readAllLines(configFile));
-
 			for (Runnable r : loadedListeners) {
 				r.run();
 			}
-
 			return true;
 		} catch (IOException ex) {
 			return false;
 		}
 	}
-
+	
 	public static boolean load(ConfigHandler handler, Config output, List<String> linesToParse) {
 		ConfigSection currentSection = null;
 		List<String> comments = new ObjectArrayList<>();
@@ -270,18 +288,21 @@ public final class ConfigHandler {
 
 		return true;
 	}
-
+	
 	public void save() {
-		try (BufferedWriter writer = Files.newBufferedWriter(configFile)) {
+		save(configFile);
+	}
+	
+	private void save(Path file) {
+		try (BufferedWriter writer = Files.newBufferedWriter(file)) {
 			writer.write(config.serialize(policy));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
-
+	
 	@FunctionalInterface
-	public interface IConfigParser
-	{
+	public interface IConfigParser {
 		ParseResult<? extends ConfigEntry<?>> parse(String key, String value, String[] comment);
 	}
 }

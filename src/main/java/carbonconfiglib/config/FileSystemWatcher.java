@@ -7,6 +7,7 @@ import java.nio.file.StandardWatchEventKinds;
 import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -78,7 +79,14 @@ public class FileSystemWatcher {
 		}
 	}
 	
-	public void registerConfigHandler(Path configFile, ConfigHandler handler) {
+	public void registerConfigHandler(ConfigHandler handler) {
+		synchronized(sync) {
+			configsByName.putIfAbsent(handler.getConfigIdentifer(), handler);
+			if(changeListener != null) changeListener.onConfigAdded(handler);
+		}
+	}
+	
+	public void registerReloadHandler(Path configFile, ConfigHandler handler) {
 		synchronized(sync) {
 			if(configs.putIfAbsent(configFile, handler) != null) {
 				logger.warn("tried to register a config that already registered at {} path", configFile);
@@ -92,7 +100,22 @@ public class FileSystemWatcher {
 					logger.fatal("could not register WatchService for directory {}", configFile.getParent());
 				}
 			}
-			if(changeListener != null) changeListener.onConfigAdded(handler);
+		}
+	}
+	
+	public void unregisterReloadHandler(Path configFile) {
+		synchronized(sync) {
+			if(configs.remove(configFile) == null) return;
+			Set<Path> parents = new ObjectOpenHashSet<>();
+			for(Path path : configs.keySet()) {
+				parents.add(path.getParent());
+			}
+			for(Iterator<Map.Entry<WatchKey, Path>> iter = folders.entrySet().iterator();iter.hasNext();) {
+				Map.Entry<WatchKey, Path> entry = iter.next();
+				if(parents.contains(entry.getValue())) continue;
+				entry.getKey().cancel();
+				iter.remove();
+			}
 		}
 	}
 	
