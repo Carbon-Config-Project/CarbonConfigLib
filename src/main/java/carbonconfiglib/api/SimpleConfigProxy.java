@@ -4,7 +4,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 import carbonconfiglib.utils.Helpers;
-import it.unimi.dsi.fastutil.objects.ObjectLists;
+import speiger.src.collections.objects.utils.ObjectLists;
 
 public class SimpleConfigProxy implements IConfigProxy
 {

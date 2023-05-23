@@ -17,9 +17,9 @@ import carbonconfiglib.api.IConfigChangeListener;
 import carbonconfiglib.api.ILogger;
 import carbonconfiglib.utils.AutomationType;
 import carbonconfiglib.utils.MultilinePolicy;
-import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import speiger.src.collections.objects.lists.ObjectArrayList;
+import speiger.src.collections.objects.maps.impl.hash.Object2ObjectLinkedOpenHashMap;
+import speiger.src.collections.objects.sets.ObjectOpenHashSet;
 
 public class FileSystemWatcher {
 	private WatchService watchService;

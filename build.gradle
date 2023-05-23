@@ -5,10 +5,28 @@ plugins {
 group 'carbonconfiglib'
 version '1.0-SNAPSHOT'
 
+eclipse {
+	classpath {
+		downloadJavadoc = true
+		downloadSources = true
+	}
+}
+
 repositories {
-    mavenCentral()
+   flatDir {
+       dirs("libs")
+   }
 }
 
 dependencies {
-    implementation 'it.unimi.dsi:fastutil:8.2.1'
+    implementation ':Primitive Collections-0.8.0'
+
+}
+
+jar {
+  from {
+  	configurations.compileClasspath.collect { 
+  		it.isDirectory() ? it : zipTree(it)
+  	}
+  }
 }

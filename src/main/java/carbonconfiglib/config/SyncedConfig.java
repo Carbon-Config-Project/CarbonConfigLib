@@ -4,8 +4,8 @@ import java.util.UUID;
 import java.util.function.Supplier;
 
 import carbonconfiglib.api.buffer.IReadBuffer;
-import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
+import speiger.src.collections.objects.maps.impl.hash.Object2ObjectLinkedOpenHashMap;
+import speiger.src.collections.objects.maps.interfaces.Object2ObjectMap;
 
 public class SyncedConfig<T extends ConfigEntry<?>>
 {
@@ -14,7 +14,7 @@ public class SyncedConfig<T extends ConfigEntry<?>>
 	
 	public SyncedConfig(Supplier<T> creator, T defaultValue) {
 		this.creator = creator;
-		mappedEntries.defaultReturnValue(defaultValue);
+		mappedEntries.setDefaultReturnValue(defaultValue);
 	}
 
 	public boolean isPresent(UUID id) {

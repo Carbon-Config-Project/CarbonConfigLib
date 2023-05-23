@@ -21,9 +21,9 @@ import carbonconfiglib.utils.Helpers;
 import carbonconfiglib.utils.MultilinePolicy;
 import carbonconfiglib.utils.ParseExpection;
 import carbonconfiglib.utils.ParseResult;
-import it.unimi.dsi.fastutil.chars.Char2ObjectMap;
-import it.unimi.dsi.fastutil.chars.Char2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import speiger.src.collections.chars.maps.impl.hash.Char2ObjectOpenHashMap;
+import speiger.src.collections.chars.maps.interfaces.Char2ObjectMap;
+import speiger.src.collections.objects.lists.ObjectArrayList;
 
 public final class ConfigHandler {
 	private Path cfgDir;

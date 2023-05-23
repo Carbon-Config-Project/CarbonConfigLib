@@ -1,5 +1,8 @@
 package carbonconfiglib.base;
 
+import carbonconfiglib.utils.Helpers;
+import carbonconfiglib.utils.ParseResult;
+
 public class TestingValue {
 	String name;
 	int year;
@@ -15,13 +18,16 @@ public class TestingValue {
 		this.fluffyness = fluffyness;
 	}
 	
-	public static TestingValue parse(String[] value) {
-		if(value.length != 3) return null;
+	public static ParseResult<TestingValue> parse(String[] value) {
+		if(value.length != 3) return ParseResult.error(Helpers.mergeCompound(value), "3 Elements are required");
+		boolean second = false;
 		try {
-			return new TestingValue(value[0], Integer.parseInt(value[1]), Double.parseDouble(value[2]));
+			int year = Integer.parseInt(value[1]);
+			second = true;
+			double fluffyness = Double.parseDouble(value[2]);
+			return ParseResult.success(new TestingValue(value[0], year, fluffyness));
 		} catch (Exception e) {
-			e.printStackTrace();
-			return null;
+			return ParseResult.error(Helpers.mergeCompound(value), e, "Couldn't parse ["+(second ? "Fluffyness" : "Year")+"] argument");
 		}
 	}
 	

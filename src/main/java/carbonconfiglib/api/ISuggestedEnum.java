@@ -2,8 +2,8 @@ package carbonconfiglib.api;
 
 import java.util.Map;
 
-import it.unimi.dsi.fastutil.objects.Object2ObjectMaps;
-import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import speiger.src.collections.objects.maps.impl.hash.Object2ObjectOpenHashMap;
+import speiger.src.collections.objects.utils.maps.Object2ObjectMaps;
 
 public interface ISuggestedEnum<T extends Enum<T>>
 {

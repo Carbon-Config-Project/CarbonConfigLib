@@ -6,8 +6,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import speiger.src.collections.objects.lists.ObjectArrayList;
+import speiger.src.collections.objects.maps.impl.hash.Object2ObjectOpenHashMap;
 
 public interface IEntryDataType {
 	public boolean isCompound();

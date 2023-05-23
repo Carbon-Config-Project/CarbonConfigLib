@@ -64,20 +64,4 @@ public class SimpleLogger implements ILogger {
 	public void error(Object o) {
 		System.out.println("[Error] "+o);
 	}
-	
-	@Override
-	public void fatal(String s) {
-		System.out.println("[Fatal] "+s);
-	}
-	
-	@Override
-	public void fatal(String s, Object o) {
-		System.out.println("[Fatal] "+String.format(s, o));
-	}
-
-	@Override
-	public void fatal(Object o) {
-		System.out.println("[Fatal] "+o);
-	}
-
 }

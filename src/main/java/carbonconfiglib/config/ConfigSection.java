@@ -18,10 +18,10 @@ import carbonconfiglib.config.ConfigEntry.TempValue;
 import carbonconfiglib.utils.Helpers;
 import carbonconfiglib.utils.MultilinePolicy;
 import carbonconfiglib.utils.SyncType;
-import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
-import it.unimi.dsi.fastutil.objects.Object2ObjectMaps;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import speiger.src.collections.objects.lists.ObjectArrayList;
+import speiger.src.collections.objects.maps.impl.hash.Object2ObjectLinkedOpenHashMap;
+import speiger.src.collections.objects.maps.interfaces.Object2ObjectMap;
+import speiger.src.collections.objects.utils.maps.Object2ObjectMaps;
 
 public class ConfigSection {
 	private String name;
