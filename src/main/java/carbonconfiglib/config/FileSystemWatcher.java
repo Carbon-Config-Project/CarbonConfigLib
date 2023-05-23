@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import carbonconfiglib.api.ConfigType;
 import carbonconfiglib.api.IConfigChangeListener;
 import carbonconfiglib.api.ILogger;
 import carbonconfiglib.utils.AutomationType;
@@ -45,8 +46,8 @@ public class FileSystemWatcher {
 			tmp = FileSystems.getDefault().newWatchService();
 		} catch (IOException e) {
 			tmp = null;
-			logger.fatal("WatchService could not be created");
-			logger.fatal(e);
+			logger.error("WatchService could not be created");
+			logger.error(e);
 		}
 		watchService = tmp;
 	}
@@ -68,7 +69,7 @@ public class FileSystemWatcher {
 	}
 	
 	public ConfigHandler createConfig(Config config, ConfigSettings settings) {
-		settings.withAutomation(AutomationType.BOTH).withBaseFolder(basePath).withSubFolder("").withLogger(logger).withMultiline(MultilinePolicy.ALWAYS_MULTILINE);
+		settings.withAutomations(AutomationType.AUTO_LOAD, AutomationType.AUTO_RELOAD, AutomationType.AUTO_SYNC).withBaseFolder(basePath).withType(ConfigType.SHARED).withSubFolder("").withLogger(logger).withMultiline(MultilinePolicy.ALWAYS_MULTILINE);
 		return new ConfigHandler(config, settings).setOwner(this);
 	}
 	
@@ -97,7 +98,7 @@ public class FileSystemWatcher {
 				try {
 					folders.put(configFile.getParent().register(watchService, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_MODIFY), configFile.getParent());
 				} catch (IOException e) {
-					logger.fatal("could not register WatchService for directory {}", configFile.getParent());
+					logger.error("could not register WatchService for directory {}", configFile.getParent());
 				}
 			}
 		}

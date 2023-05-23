@@ -197,6 +197,16 @@ public class ConfigSection {
 		return false;
 	}
 	
+	boolean isDefault() {
+		for(ConfigEntry<?> entry : entries.values()) {
+			if(!entry.isDefault()) return false;
+		}
+		for(ConfigSection section : subSections.values()) {
+			if(!section.isDefault()) return false;
+		}
+		return true;		
+	}
+	
 	public ConfigSection getParent() {
 		return parent;
 	}

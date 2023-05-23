@@ -13,7 +13,4 @@ public interface ILogger {
 	void error(String s);
 	void error(String s, Object o);
 	void error(Object o);
-	void fatal(String s);
-	void fatal(String s, Object o);
-	void fatal(Object o);
 }

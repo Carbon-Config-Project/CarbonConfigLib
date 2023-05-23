@@ -136,7 +136,7 @@ public abstract class ConfigEntry<T> {
 	}
 	
 	public final boolean isDefault() {
-		return used && (value.getClass().isArray() ? !Objects.deepEquals(defaultValue, value) : !Objects.equals(defaultValue, value));
+		return used && (value.getClass().isArray() ? Objects.deepEquals(defaultValue, value) : Objects.equals(defaultValue, value));
 	}
 	
 	public final IReloadMode getReloadState() {

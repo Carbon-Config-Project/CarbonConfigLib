@@ -81,6 +81,13 @@ public class Config {
 		return false;
 	}
 	
+	public boolean isDefault() {
+		for(ConfigSection section : sections.values()) {
+			if(!section.isDefault()) return false;
+		}
+		return true;
+	}
+	
 	public String serialize(MultilinePolicy policy) {
 		if (sections.size() == 0) return "";
 		StringJoiner joiner = new StringJoiner("\n\n");
