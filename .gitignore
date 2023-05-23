@@ -1,6 +1,9 @@
 # Created by https://www.toptal.com/developers/gitignore/api/java,gradle,eclipse,intellij+all
 # Edit at https://www.toptal.com/developers/gitignore?templates=java,gradle,eclipse,intellij+all
 
+### REQUIRED ###
+!/libs
+
 ### Eclipse ###
 .metadata
 bin/
