@@ -30,16 +30,14 @@ public final class ConfigHandler {
 	private Path configFile;
 	private boolean isLoaded;
 	private boolean registered;
+	private int wasSaving = 0;
 	private final String subFolder;
 	private final Config config;
 	private final EnumSet<AutomationType> setting;
 	private final MultilinePolicy policy;
 	public final ConfigType type;
 	private final List<ConfigError> errors = new ObjectArrayList<>();
-	
-	
 	private final IConfigProxy proxy;
-	
 	private final ILogger logger;
 	private FileSystemWatcher owner;
 	
@@ -143,7 +141,7 @@ public final class ConfigHandler {
 		if(owner != null) {
 			owner.registerConfigHandler(this);
 			registered = true;
-			if(setting.contains(AutomationType.AUTO_LOAD)) {
+			if(!proxy.isDynamicProxy() && setting.contains(AutomationType.AUTO_LOAD)) {
 				load();
 			}
 		}
@@ -163,6 +161,16 @@ public final class ConfigHandler {
 			save();
 		}
 		isLoaded = true;
+	}
+	
+	public boolean reload() {
+		if(!isLoaded) return false;
+		if(wasSaving > 0) {
+			wasSaving--;
+			return false;
+		}
+		loadInternally();
+		return true;
 	}
 	
 	public void unload() {
@@ -240,7 +248,7 @@ public final class ConfigHandler {
 				}
 				return extra;
 			}
-			entry.setComment(comment);
+			entry.parseComment(comment);
 			if (line.charAt(0) == entry.getPrefix()) {
 				ParseResult<String> result = entry.deserializeValue(entryData[2]);
 				if(result.hasError() && logErrors) {
@@ -278,14 +286,19 @@ public final class ConfigHandler {
 	}
 	
 	private boolean loadInternally() {
+		if(Files.notExists(configFile)) return true;
 		try {
 			errors.clear();
 			load(this, config, Files.readAllLines(configFile), true);
 			for (Runnable r : loadedListeners) {
 				r.run();
 			}
+			if(errors.size() > 0 && owner != null) {
+				owner.onConfigErrored(this);
+			}
 			return true;
 		} catch (IOException ex) {
+			ex.printStackTrace();
 			return false;
 		}
 	}
@@ -300,6 +313,7 @@ public final class ConfigHandler {
 			switch (line.charAt(0)) {
 				case '[':
 					currentSection = output.getSectionRecursive(line.substring(1, line.length() - 1).split("\\."));
+					currentSection.parseComment(comments.toArray(new String[comments.size()]));
 					comments.clear();
 					break;
 				case '#':
@@ -312,7 +326,6 @@ public final class ConfigHandler {
 					break;
 			}
 		}
-
 		return true;
 	}
 	
@@ -321,6 +334,7 @@ public final class ConfigHandler {
 	}
 	
 	private void save(Path file) {
+		wasSaving++;
 		try (BufferedWriter writer = Files.newBufferedWriter(file)) {
 			writer.write(config.serialize(policy));
 		} catch (IOException e) {

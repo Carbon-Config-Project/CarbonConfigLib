@@ -70,6 +70,7 @@ public interface IEntryDataType {
 	public static final class CompoundDataType implements IEntryDataType {
 		List<Map.Entry<String, EntryDataType>> values = new ObjectArrayList<>();
 		Map<String, Class<?>> customVariants = new Object2ObjectOpenHashMap<>();
+		Map<String, EntryDataType> customDisplay = new Object2ObjectOpenHashMap<>();
 		
 		public CompoundDataType with(String name, EntryDataType type) {
 			Objects.requireNonNull(name);
@@ -79,11 +80,12 @@ public interface IEntryDataType {
 			return this;
 		}
 		
-		public CompoundDataType withCustom(String name, Class<?> type) {
+		public CompoundDataType withCustom(String name, Class<?> type, EntryDataType displayType) {
 			Objects.requireNonNull(name);
 			Objects.requireNonNull(type);
 			values.add(new AbstractMap.SimpleEntry<>(name, EntryDataType.CUSTOM));
 			customVariants.put(name, type);
+			customDisplay.put(name, displayType);
 			return this;
 		}
 		
@@ -93,6 +95,10 @@ public interface IEntryDataType {
 		
 		public Class<?> getVariant(String name) {
 			return customVariants.get(name);
+		}
+		
+		public EntryDataType getDisplay(String name) {
+			return customDisplay.get(name);
 		}
 		
 		@Override

@@ -6,4 +6,5 @@ public interface IConfigChangeListener {
 	void onConfigCreated(ConfigHandler configHandler);
 	void onConfigAdded(ConfigHandler configHandler);
 	void onConfigChanged(ConfigHandler configHandler);
+	void onConfigErrored(ConfigHandler configHandler);
 }

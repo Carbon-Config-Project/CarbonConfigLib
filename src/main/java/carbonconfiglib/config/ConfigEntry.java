@@ -2,11 +2,13 @@ package carbonconfiglib.config;
 
 import java.lang.reflect.Array;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.StringJoiner;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 import carbonconfiglib.api.IConfigSerializer;
@@ -54,9 +56,19 @@ public abstract class ConfigEntry<T> {
 		return comment;
 	}
 	
+	void parseComment(String...comment) {
+		if(this.comment == null) this.comment = Helpers.validateComments(comment);
+	}
+	
 	public ConfigEntry<T> setComment(String... comment) {
 		this.comment = Helpers.validateComments(comment);
 		return this;
+	}
+	
+	protected ConfigEntry<T> deepCopy() {
+		ConfigEntry<T> copy = copy();
+		copy.suggestions.addAll(suggestions);
+		return copy;
 	}
 	
 	protected abstract ConfigEntry<T> copy();
@@ -232,10 +244,9 @@ public abstract class ConfigEntry<T> {
 	public final String serialize(MultilinePolicy policy, int indentationLevel) {
 		String indentation = '\n' + Helpers.generateIndent(indentationLevel);
 		StringBuilder builder = new StringBuilder();
-		if (comment != null) {
+		if (comment != null && comment.length > 0) {
 			builder.append('\n');
-			for(int i = 0;i<comment.length;i++)
-			{
+			for(int i = 0;i<comment.length;i++) {
 				builder.append(indentation);
 				builder.append("# ");
 				builder.append(comment[i].replaceAll("\\R", indentation + "# "));
@@ -243,6 +254,7 @@ public abstract class ConfigEntry<T> {
 		}
 		String limits = getLimitations();
 		if(limits != null && !limits.isEmpty()) {
+			if(builder.length() == 0) builder.append("\n");
 			builder.append(indentation);
 			builder.append("#").append('\u200b').append(" ");
 			builder.append(limits);
@@ -355,6 +367,10 @@ public abstract class ConfigEntry<T> {
 			super(key, defaultValue, comment);
 		}
 		
+		public <K, V> MappedConfig<K, V> createdMappedConfig(ConfigHandler handler, Function<T, K> keyGenerator, Function<T, V> valueGenerator) {
+			return MappedConfig.create(handler, this, keyGenerator, valueGenerator);
+		}
+		
 		@SuppressWarnings("unchecked")
 		public final <S extends ArrayConfigEntry<T>> S addSuggestions(T... values) {
 			for(T value : values) {
@@ -385,6 +401,43 @@ public abstract class ConfigEntry<T> {
 			result[0] = input;
 			return result;
 		}
+	}
+	
+	public static abstract class CollectionConfigEntry<T, E extends Collection<T>> extends ConfigEntry<E> {
+		
+		public CollectionConfigEntry(String key, E defaultValue, String... comment) {
+			super(key, defaultValue, comment);
+		}
+		
+		public <K, V> MappedConfig<K, V> createdMappedConfig(ConfigHandler handler, Function<T, K> keyGenerator, Function<T, V> valueGenerator) {
+			return MappedConfig.create(handler, this, keyGenerator, valueGenerator);
+		}
+		
+		@SuppressWarnings("unchecked")
+		public final <S extends CollectionConfigEntry<T, E>> S addSuggestions(T... values) {
+			for(T value : values) {
+				addSuggestionInternal(serializedValue(MultilinePolicy.DISABLED, create(value)));
+			}
+			return (S)this;
+		}
+		
+		public final <S extends CollectionConfigEntry<T, E>> S addSuggestion(T value) {
+			return addSuggestionInternal(serializedValue(MultilinePolicy.DISABLED, create(value)));
+		}
+		
+		public final <S extends CollectionConfigEntry<T, E>> S addSuggestion(T value, Object extra) {
+			return addSuggestionInternal(extra, serializedValue(MultilinePolicy.DISABLED, create(value)));
+		}
+		
+		public final <S extends CollectionConfigEntry<T, E>> S addSuggestion(String name, T value) {
+			return addSuggestionInternal(name, serializedValue(MultilinePolicy.DISABLED, create(value)));
+		}
+		
+		public final <S extends CollectionConfigEntry<T, E>> S addSuggestion(String name, T value, Object extra) {
+			return addSuggestionInternal(name, serializedValue(MultilinePolicy.DISABLED, create(value)), extra);
+		}
+		
+		protected abstract E create(T value);
 	}
 	
 	public static class IntValue extends BasicConfigEntry<Integer> {
@@ -959,7 +1012,12 @@ public abstract class ConfigEntry<T> {
 		private String buildFormat() {
 			StringJoiner joiner = new StringJoiner(";");
 			for(Map.Entry<String, EntryDataType> entry : serializer.getFormat().getCompound()) {
-				joiner.add(entry.getKey()+"("+Helpers.firstLetterUppercase(entry.getValue().name().toLowerCase())+")");
+				EntryDataType type = entry.getValue();
+				if(entry.getValue() == EntryDataType.CUSTOM) {
+					EntryDataType displayType = serializer.getFormat().getDisplay(entry.getKey());
+					if(displayType != null) type = displayType;
+				}
+				joiner.add(entry.getKey()+"("+Helpers.firstLetterUppercase(type.name().toLowerCase())+")");
 			}
 			return joiner.toString();
 		}
@@ -980,7 +1038,7 @@ public abstract class ConfigEntry<T> {
 		}
 	}
 	
-	public static class ParsedArray<T> extends ConfigEntry<List<T>> implements IArrayConfig {
+	public static class ParsedArray<T> extends CollectionConfigEntry<T, List<T>> implements IArrayConfig {
 		IConfigSerializer<T> serializer;
 
 		public ParsedArray(String key, List<T> defaultValue, IConfigSerializer<T> serializer, String... comment) {
@@ -1081,7 +1139,12 @@ public abstract class ConfigEntry<T> {
 		private String buildFormat() {
 			StringJoiner joiner = new StringJoiner(";");
 			for(Map.Entry<String, EntryDataType> entry : serializer.getFormat().getCompound()) {
-				joiner.add(entry.getKey()+"("+Helpers.firstLetterUppercase(entry.getValue().name().toLowerCase())+")");
+				EntryDataType type = entry.getValue();
+				if(entry.getValue() == EntryDataType.CUSTOM) {
+					EntryDataType displayType = serializer.getFormat().getDisplay(entry.getKey());
+					if(displayType != null) type = displayType;
+				}
+				joiner.add(entry.getKey()+"("+Helpers.firstLetterUppercase(type.name().toLowerCase())+")");
 			}
 			return joiner.toString();
 		}
@@ -1109,6 +1172,11 @@ public abstract class ConfigEntry<T> {
 				if(value != null) values.add(value);
 			}
 			set(values);
+		}
+
+		@Override
+		protected List<T> create(T value) {
+			return ObjectLists.singleton(value);
 		}
 	}
 }

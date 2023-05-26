@@ -37,6 +37,10 @@ public class ConfigSettings {
 		return new ConfigSettings().withType(type);
 	}
 	
+	public static ConfigSettings withoutSettings() {
+		return new ConfigSettings().noAutomations();
+	}
+	
 	public static ConfigSettings withSettings(AutomationType type) {
 		return new ConfigSettings().withAutomations(type);
 	}
@@ -59,6 +63,11 @@ public class ConfigSettings {
 	
 	public ConfigSettings withProxy(IConfigProxy proxy) {
 		if(this.proxy == null) this.proxy = proxy;
+		return this;
+	}
+	
+	public ConfigSettings noAutomations() {
+		if(auto == null) this.auto = new AutomationType[0];
 		return this;
 	}
 	

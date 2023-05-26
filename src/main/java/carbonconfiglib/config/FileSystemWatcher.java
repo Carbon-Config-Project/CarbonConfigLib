@@ -64,6 +64,10 @@ public class FileSystemWatcher {
 		if(changeListener != null) changeListener.onConfigCreated(handler);
 	}
 	
+	void onConfigErrored(ConfigHandler handler) {
+		if(changeListener != null) changeListener.onConfigErrored(handler);
+	}
+	
 	public ConfigHandler createConfig(Config config) {
 		return createConfig(config, ConfigSettings.of());
 	}
@@ -131,8 +135,7 @@ public class FileSystemWatcher {
 				for (WatchEvent<?> event : key.pollEvents()) {
 					ConfigHandler handler = configs.get(folders.get(key).resolve(((Path) event.context()).getFileName()));
 					if (handler != null) {
-						handler.load();
-						if (changeListener != null && syncedConfigs.contains(handler)) {
+						if(handler.reload() && changeListener != null && syncedConfigs.contains(handler)) {
 							changeListener.onConfigChanged(handler);
 						}
 					}
@@ -140,6 +143,10 @@ public class FileSystemWatcher {
 				key.reset();
 			}
 		}
+	}
+	
+	public List<ConfigHandler> getAllConfigs() {
+		return new ObjectArrayList<>(configsByName.values());
 	}
 	
 	public List<ConfigHandler> getConfigsToSync() {

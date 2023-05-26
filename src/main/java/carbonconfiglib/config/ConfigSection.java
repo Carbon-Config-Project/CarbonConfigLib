@@ -25,6 +25,7 @@ import speiger.src.collections.objects.utils.maps.Object2ObjectMaps;
 
 public class ConfigSection {
 	private String name;
+	private String[] comment;
 	private ConfigSection parent = null;
 	private boolean used = false;
 	private Object2ObjectMap<String, ConfigEntry<?>> entries = new Object2ObjectLinkedOpenHashMap<>();
@@ -38,11 +39,20 @@ public class ConfigSection {
 		this.name = name;
 	}
 	
+	public ConfigSection setComment(String...comment) {
+		this.comment = Helpers.validateComments(comment);
+		return this;
+	}
+	
+	void parseComment(String...comment) {
+		if(comment != null) return;
+		this.comment = Helpers.validateComments(comment);
+	}
+	
 	@SuppressWarnings("unchecked")
 	public <V, T extends ConfigEntry<V>> T add(T entry) {
 		ConfigEntry<?> presentKey = entries.get(entry.getKey());
-		if(presentKey != null)
-		{
+		if(presentKey != null) {
 			if(presentKey instanceof TempValue) entry.deserializeValue(presentKey.serialize());
 			else return (T)(presentKey.getPrefix() != entry.getPrefix() ? entry : presentKey).setUsed();
 		}
@@ -177,7 +187,7 @@ public class ConfigSection {
 			copy.add(sub.copy());
 		}
 		for(ConfigEntry<?> entry : entries.values()) {
-			copy.add(entry.copy());
+			copy.add(entry.deepCopy());
 		}
 		return copy;
 	}
@@ -246,7 +256,17 @@ public class ConfigSection {
 	public String serialize(MultilinePolicy policy, int indentationLevel) {
 		if (entries.size() == 0 && subSections.size() == 0) return null;
 		AtomicInteger written = new AtomicInteger(0);
-		StringBuilder builder = new StringBuilder(parent == null ? "" : ('\n' + Helpers.generateIndent(indentationLevel)));
+		StringBuilder builder = new StringBuilder(parent == null ? "" : '\n' + Helpers.generateIndent(indentationLevel));
+		if (comment != null && comment.length > 0) {
+			String indentation = '\n' + Helpers.generateIndent(indentationLevel);
+			for(int i = 0;i<comment.length;i++) {
+				builder.append(indentation);
+				builder.append("# ");
+				builder.append(comment[i].replaceAll("\\R", indentation + "# "));
+			}
+			builder.append(indentation);
+			builder.delete(0, 1);
+		}
 		builder.append('[');
 		builder.append(getSectionPath());
 		builder.append(']');
