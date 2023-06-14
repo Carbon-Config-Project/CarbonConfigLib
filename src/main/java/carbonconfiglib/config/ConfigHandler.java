@@ -147,6 +147,18 @@ public final class ConfigHandler {
 		}
 	}
 	
+	public void createDefaultConfig() {
+		if(!registered) return;
+		if(proxy.isDynamicProxy() && setting.contains(AutomationType.AUTO_LOAD)) {
+			List<Path> baseFolders = proxy.getBasePaths();
+			Path file = createConfigFile(baseFolders.get(baseFolders.size()-1));
+			if(Files.notExists(file)) {
+				save(file);
+				wasSaving--;
+			}
+		}
+	}
+	
 	public void load() {
 		findConfigFile();
 		if(owner != null) {
