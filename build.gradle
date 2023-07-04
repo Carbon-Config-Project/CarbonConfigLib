@@ -19,7 +19,7 @@ repositories {
 }
 
 dependencies {
-    implementation ':Primitive Collections-0.8.0'
+    implementation ':Primitive Collections-0.8.9'
 
 }
 
