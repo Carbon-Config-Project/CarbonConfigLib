@@ -56,7 +56,7 @@ public class ConfigSettings {
 		return new ConfigSettings().noAutomations();
 	}
 	
-	public static ConfigSettings withSettings(AutomationType type) {
+	public static ConfigSettings withSettings(AutomationType... type) {
 		return new ConfigSettings().withAutomations(type);
 	}
 	
