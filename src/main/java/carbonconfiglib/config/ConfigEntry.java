@@ -50,6 +50,8 @@ public abstract class ConfigEntry<T> {
 	private String[] comment;
 	private boolean used = false;
 	private boolean serverSync = false;
+	private boolean hidden = true;
+	private boolean wasLoaded = false;
 	private IReloadMode reload = null;
 	private SyncedConfig<ConfigEntry<T>> syncCache;
 	private List<Suggestion> suggestions = new ObjectArrayList<>();
@@ -83,6 +85,8 @@ public abstract class ConfigEntry<T> {
 	protected ConfigEntry<T> deepCopy() {
 		ConfigEntry<T> copy = copy();
 		copy.suggestions.addAll(suggestions);
+		copy.hidden = hidden;
+		copy.wasLoaded = wasLoaded;
 		return copy;
 	}
 	
@@ -158,6 +162,15 @@ public abstract class ConfigEntry<T> {
 		return this;
 	}
 	
+	final ConfigEntry<T> setLoaded() {
+		wasLoaded = true;
+		return this;
+	}
+	
+	public final boolean isNotHidden() {
+		return !hidden || wasLoaded;
+	}
+	
 	public final boolean hasChanged() {
 		return used && (value.getClass().isArray() ? !Objects.deepEquals(lastValue, value) : !Objects.equals(lastValue, value));
 	}
@@ -176,6 +189,12 @@ public abstract class ConfigEntry<T> {
 	
 	final SyncType getSyncType() {
 		return syncCache != null ? SyncType.CLIENT_TO_SERVER : (serverSync ? SyncType.SERVER_TO_CLIENT : SyncType.NONE);
+	}
+	
+	@SuppressWarnings("unchecked")
+	public final <S extends ConfigEntry<T>> S setHidden() {
+		hidden = true;
+		return (S)this;
 	}
 	
 	@SuppressWarnings("unchecked")
@@ -213,6 +232,7 @@ public abstract class ConfigEntry<T> {
 		ParseResult<T> result = parseValue(value);
 		if(result.hasError()) return result.withDefault(value);
 		set(result.getValue());
+		setLoaded();
 		return ParseResult.success(value);
 	}
 	

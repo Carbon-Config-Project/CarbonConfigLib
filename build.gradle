@@ -13,14 +13,11 @@ eclipse {
 }
 
 repositories {
-   flatDir {
-       dirs("libs")
-   }
+	maven { url 'https://jitpack.io' }
 }
 
 dependencies {
-    implementation ':Primitive Collections-0.8.9'
-
+	implementation 'com.github.Speiger:Primitive-Collections:0.9.0'
 }
 
 jar {

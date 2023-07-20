@@ -76,7 +76,7 @@ public class ConfigSection {
 	}
 	
 	<V, T extends ConfigEntry<V>> T addParsed(T entry) {
-		entries.putIfAbsent(entry.getKey(), entry);
+		entries.putIfAbsent(entry.getKey(), entry).setLoaded();
 		return entry;
 	}
 	
@@ -287,7 +287,7 @@ public class ConfigSection {
 		builder.append(']');
 		final int finalIndentationLevel = indentationLevel + 1;
 		Object2ObjectMaps.fastForEach(entries, entry -> {
-			if(!entry.getValue().isUsed()) return;
+			if(!entry.getValue().isUsed() || !entry.getValue().isNotHidden()) return;
 			builder.append(entry.getValue().serialize(policy, finalIndentationLevel));
 			written.incrementAndGet();
 		});
