@@ -1,0 +1,17 @@
+name: Feature request
+description: Suggest an idea for this project
+labels: ["enhancement"]
+body:
+  - type: checkboxes
+    attributes:
+      label: Checks
+      options:
+        - label: I checked for duplicate suggestions and there were none found.
+          required: true
+          
+  - type: textarea
+    attributes:
+      label: The Feature
+      description: Describe the feature you would like to see.
+    validations:
+      required: true

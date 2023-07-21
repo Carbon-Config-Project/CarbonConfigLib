@@ -1,0 +1,40 @@
+name: Bug Report
+description: If you experience a Bug with Carbon Config
+labels: ["bug"]
+body:
+  - type: checkboxes
+    attributes:
+      label: Checks
+      options:
+        - label: I checked for duplicate issues and there were none found.
+          required: true
+        - label: I have made sure this program is the source of the problem.
+          required: true
+      
+  - type: input
+    attributes:
+      label: Carbon Config Lib Version
+      description: The version of the Carbon Config Library you are using.
+      placeholder: "MAJOR.MINOR.PATCH"
+    validations:
+      required: true
+
+  - type: input
+    attributes:
+      label: Java Version
+      description: The Version of Java you are using.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: The Problem
+      description: Describe the problem that you have
+    validations:
+      required: true
+  
+  - type: textarea
+    attributes:
+      label: Relevant logs
+      description: If there is any logs that could help solve the issue
+      placeholder: Gist/Pastebin link or drag/drop file in
