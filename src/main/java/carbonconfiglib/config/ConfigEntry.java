@@ -50,7 +50,7 @@ public abstract class ConfigEntry<T> {
 	private String[] comment;
 	private boolean used = false;
 	private boolean serverSync = false;
-	private boolean hidden = true;
+	private boolean hidden = false;
 	private boolean wasLoaded = false;
 	private IReloadMode reload = null;
 	private SyncedConfig<ConfigEntry<T>> syncCache;
