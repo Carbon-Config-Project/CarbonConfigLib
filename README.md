@@ -3,8 +3,22 @@
 # Carbon Config
 
 Carbon Config is a Library that allows simple ways to create/manage configuration files.    
-It is designed to be easily usable and flexible.   
+It is designed to be simple yet flexible.   
 On top of that it was developed with feature expansion in mind.    
+
+## How to install
+
+Using Gradle:
+
+```
+repositories {
+	maven { url = "https://jitpack.io" }
+}
+dependencies {
+	implementation 'com.github.Carbon-Config-Project:CarbonConfigLib:1.0.0'
+}
+
+```
 
 ## Creating a config instance
 
@@ -23,6 +37,11 @@ public static BoolValue DO_STUFF;
 		CONFIG.register();
 	}
 	
+	public void update() {
+		//Detects file changes, not required fully optional
+		WATCHER.processFileSystemEvents();
+	}
+	
 	public static void changeStuff(boolean value) {
 		DO_STUFF.set(value);
 		CONFIG.save();
@@ -30,6 +49,8 @@ public static BoolValue DO_STUFF;
 ```
 
 The register function, unless differently specified, automatically loads the config.
+
+Another Example can be found in the [SimpleTest](src/test/java/carbonconfiglib/SimpleTest.java) class.
 
 
 ## Features
@@ -58,3 +79,4 @@ A list of Features that Carbon Config supports.
   ``Some Configs are only there for the developers to debug things. CarbonConfig also supports Hidden Configs. These simply load their defaults and can only be changed by Manually Writing them into the Config File. Allowing for debug tools to be present yet not add extra clutter to the Config file that isn't wanted.``
 - **GUI Compatible**     
   ``While no Gui is provided by default it is written with having a GUI hooked into it in mind. The entire Config is written in a way were Guis can be hooked into the parsing/validation process and allow for customization without having to guess the data types or having to write magic to set values. If a value has to be set, it requests a string and the config itself is managing the parsing process and gives feedback of what went wrong.``
+ 

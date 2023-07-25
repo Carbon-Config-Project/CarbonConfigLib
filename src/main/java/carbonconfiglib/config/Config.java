@@ -11,7 +11,6 @@ import carbonconfiglib.utils.SyncType;
 import speiger.src.collections.objects.lists.ObjectArrayList;
 import speiger.src.collections.objects.maps.impl.hash.Object2ObjectLinkedOpenHashMap;
 import speiger.src.collections.objects.maps.interfaces.Object2ObjectMap;
-import speiger.src.collections.objects.utils.maps.Object2ObjectMaps;
 
 /**
  * Copyright 2023 Speiger, Meduris
@@ -106,10 +105,10 @@ public class Config {
 	public String serialize(MultilinePolicy policy) {
 		if (sections.size() == 0) return "";
 		StringJoiner joiner = new StringJoiner("\n\n");
-		Object2ObjectMaps.fastForEach(sections, entry -> {
-			String val = entry.getValue().serialize(policy);
-			if(val != null) joiner.add(val);
-		});
+		for(ConfigSection section : sections.values()) {
+			String val = section.serialize(policy);
+			if(val != null) joiner.add(val);			
+		}
 		return joiner.toString();
 	}
 }

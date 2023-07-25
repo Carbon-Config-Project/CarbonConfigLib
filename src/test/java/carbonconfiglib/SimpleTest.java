@@ -3,7 +3,7 @@ package carbonconfiglib;
 import java.nio.file.Paths;
 
 import carbonconfiglib.api.IConfigSerializer;
-import carbonconfiglib.base.SimpleLogger;
+import carbonconfiglib.api.SystemLogger;
 import carbonconfiglib.base.TestingValue;
 import carbonconfiglib.config.Config;
 import carbonconfiglib.config.ConfigEntry.ArrayValue;
@@ -38,7 +38,7 @@ import carbonconfiglib.utils.MultilinePolicy;
  * limitations under the License.
  */
 public class SimpleTest {
-	public static final FileSystemWatcher WATCHER = new FileSystemWatcher(new SimpleLogger(), Paths.get("run"), null);
+	public static final FileSystemWatcher WATCHER = new FileSystemWatcher(new SystemLogger(), Paths.get("run"), null);
 	public static BoolValue FLAG;
 	public static IntValue INTS;
 	public static DoubleValue DOUBLES;
