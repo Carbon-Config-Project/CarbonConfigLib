@@ -19,17 +19,15 @@ public class ParseExpection {
 	final String value;
 	final Exception expection;
 	final String message;
-	final int index;
 	
 	public ParseExpection(String value, Exception expection, String message) {
-		this(value, expection, message, -1);
-	}
-	
-	public ParseExpection(String value, Exception expection, String message, int index) {
 		this.value = value;
 		this.expection = expection;
 		this.message = message;
-		this.index = index;
+	}
+	
+	public ParseExpection appendMessage(String message) {
+		return new ParseExpection(value, expection, message+"\n"+this.message);
 	}
 	
 	public String getValue() {
@@ -42,13 +40,5 @@ public class ParseExpection {
 	
 	public String getMessage() {
 		return message;
-	}
-	
-	public int getIndex() {
-		return index;
-	}
-	
-	public ParseExpection withIndex(int index) {
-		return new ParseExpection(value, expection, message, index);
 	}
 }

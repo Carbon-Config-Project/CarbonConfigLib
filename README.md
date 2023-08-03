@@ -2,6 +2,8 @@
 [![](https://jitpack.io/v/Carbon-Config-Project/CarbonConfigLib.svg)](https://jitpack.io/#Carbon-Config-Project/CarbonConfigLib)
 # Carbon Config
 
+![Image](img/logo.png)
+
 Carbon Config is a Library that allows simple ways to create/manage configuration files.    
 It is designed to be simple yet flexible.   
 On top of that it was developed with feature expansion in mind.    

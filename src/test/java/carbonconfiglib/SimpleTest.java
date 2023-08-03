@@ -56,6 +56,8 @@ public class SimpleTest {
 		STRINGS = testSection.addString("StringTest", "Testing my StringValue", "Test the String");
 		ARRAY = testSection.addArray("ArrayTest", new String[] {"Testing1", "Testing2", "Testing3", "Testing4", "Testing5", "Testing6", "Testing7", "Testing8", "Testing9", "Testing10"}, "Testing the Array");
 		ENUMS = testSection.addEnum("EnumTest", AutomationType.AUTO_LOAD, AutomationType.class, "Testing the Enum");
+		
+		
 		CompoundDataType type = new CompoundDataType().with("Name", EntryDataType.STRING).with("Year", EntryDataType.INTEGER).with("Fluffyness", EntryDataType.DOUBLE);
 		PARSED = testSection.addParsed("ParseTest", new TestingValue(), IConfigSerializer.noSync(type, new TestingValue(), TestingValue::parse, TestingValue::serialize));
 		

@@ -35,15 +35,12 @@ public class TestingValue {
 	
 	public static ParseResult<TestingValue> parse(String[] value) {
 		if(value.length != 3) return ParseResult.error(Helpers.mergeCompound(value), "3 Elements are required");
-		boolean second = false;
-		try {
-			int year = Integer.parseInt(value[1]);
-			second = true;
-			double fluffyness = Double.parseDouble(value[2]);
-			return ParseResult.success(new TestingValue(value[0], year, fluffyness));
-		} catch (Exception e) {
-			return ParseResult.error(Helpers.mergeCompound(value), e, "Couldn't parse ["+(second ? "Fluffyness" : "Year")+"] argument");
-		}
+		if(value[0] == null || value[0].trim().isEmpty()) return ParseResult.error(value[0], "Value [Name] is not allowed to be null/empty");
+		ParseResult<Integer> year = Helpers.parseInt(value[1]);
+		if(year.hasError()) return year.onlyError("Couldn't parse [Year] argument");
+		ParseResult<Double> fluffyness = Helpers.parseDouble(value[2]);
+		if(fluffyness.hasError()) return fluffyness.onlyError("Couldn't parse [Fluffyness] argument");
+		return ParseResult.success(new TestingValue(value[0], year.getValue(), fluffyness.getValue()));
 	}
 	
 	public String[] serialize() {

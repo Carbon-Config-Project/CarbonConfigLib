@@ -87,6 +87,10 @@ public class ParseResult<T> {
 		return new ParseResult<>(null, error);
 	}
 	
+	public <S> ParseResult<S> onlyError(String extraComment) {
+		return new ParseResult<>(null, error.appendMessage(extraComment));
+	}
+	
 	public <S> ParseResult<S> withDefault(S value) {
 		return new ParseResult<S>(value, error);
 	}
