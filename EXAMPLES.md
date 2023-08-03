@@ -74,15 +74,14 @@ But here is a example.
 		public static SyncPacket create(ConfigHandler handler, SyncType type, boolean forceSync) {
 			if(!handler.isLoaded()) return null;
 			Map<String, byte[]> data = new Object2ObjectLinkedOpenHashMap<>();
+			ByteArrayOutputStream buf = new ByteArrayOutputStream(); //using javaIO as a example here but isn't required.
 			IWriteBuffer buffer = //My Write Buffer implementation.
 			for(Map.Entry<String, ConfigEntry<?>> entry : handler.getConfig().getSyncedEntries(type).entrySet()) {
 				ConfigEntry<?> value = entry.getValue();
 				if(forceSync || value.hasChanged()) {
 					buf.clear();
 					value.serialize(buffer);
-					byte[] configData = new byte[buf.writerIndex()];
-					buf.readBytes(configData);
-					data.put(entry.getKey(), configData);
+					data.put(entry.getKey(), buf.array());
 					value.onSynced();
 				}
 			}
