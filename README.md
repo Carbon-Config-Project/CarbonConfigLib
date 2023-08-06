@@ -52,7 +52,8 @@ public static BoolValue DO_STUFF;
 
 The register function, unless differently specified, automatically loads the config.
 
-Another Example can be found in the [SimpleTest](src/test/java/carbonconfiglib/SimpleTest.java) class.
+A simple example can be found [Here](src/test/java/carbonconfiglib/SimpleTest.java)   
+A more extensive example/explanation list can be found [Here](EXAMPLES.md)    H
 
 
 ## Features

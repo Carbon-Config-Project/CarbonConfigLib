@@ -1,4 +1,4 @@
-### Examples
+# Examples
 
 This Page provides Examples how to do certain things.
 Everything a expansion of the [Basic Config](#basic-config) example.
@@ -151,12 +151,27 @@ If no user variable was defined for whatever reason it will use the server defau
 
 Note this relies on that the network synchronization was implemented.    
 
+## Creating Mapped Configs
+
+Sometimes you have a config that has a given key but all the provided implementations only provide Singletons/Array/Collections which are not key/value based.    
+This is where Mapped Configs come into play.   
+These use a Key/Value Generator to generate the key and the value.   
+
+```java
+public static MappedConfig<String, String> MAPPED_CONFIG;
+
+	public static void main(String...args) {
+		MAPPED_CONFIG = MappedConfig.create(CONFIG, section.addArray("Mapped Example", new String[]{"key1:value1", "key2:value2", "key3:value1"}), T -> T.split(":")[0], T -> T.split(":")[1]);
+	}
+```
+As can be seen its fully control over how the key and the value is generated and it works with any Array/Collection based config.
+
 
 ## Config Settings
 
 The Config Settings are custom overrides for each config file to allow customization.   
 
-# SubFolder
+### SubFolder
 
 Creates a SubFolder the Config is placed in.    
 Multiple Configs can have the same subfolder.
@@ -167,7 +182,7 @@ Multiple Configs can have the same subfolder.
 	}
 ```
 
-# Custom Logger
+### Custom Logger
 
 If the config should have its own Logger implementation this can be done with the "withLog/withLogger" function.
 
@@ -177,7 +192,7 @@ If the config should have its own Logger implementation this can be done with th
 	}
 ```
 
-# Custom Paths/Proxies
+### Custom Paths/Proxies
 
 Sometimes a custom path or a Instance specific path is required.    
 This can be done with Proxies.     
@@ -302,3 +317,146 @@ public static ParsedValue<TestingValue> PARSED;
 			}
 		}
 ```
+
+## Custom Config Entries
+
+Carbon Config provides a somewhat simple way to create custom Config Entries   
+This can be easily done by implementing one of the 3 abstract classes:   
+- BasicConfigEntry for simple single config values
+- ArrayConfigEntry for anything that should use an array
+- CollectionConfigEntry for anything that should use a collection.
+
+Here is a example of a Color Config that parses from/serializes into hex values.
+
+<details>
+<summary>ColorValue Code</summary>
+<p>
+
+```java
+public class ColorValue extends BasicConfigEntry<ColorWrapper>
+{
+	public ColorValue(String key, int defaultValue, String... comment) {
+		super(key, new ColorWrapper(defaultValue), comment);
+	}
+	
+	/**
+	 * Creates a copy of the Entry.
+	 * Make sure everything is included, including filters.
+	 */
+	@Override
+	protected ColorValue copy() {
+		return new ColorValue(getKey(), get(), getComment());
+	}
+	
+	/**
+	 * Parse function
+	 */
+	@Override
+	public ParseResult<ColorWrapper> parseValue(String value) {
+		ParseResult<Integer> result = ColorWrapper.parseInt(value);
+		return result.hasError() ? result.onlyError() : ParseResult.success(new ColorWrapper(result.getValue()));
+	}
+	
+	/**
+	 * Data Type for GUI Implementations.
+	 * In this example the color type is expected to be supported using the custom type.
+	 * (The special thing is that the color would be displayed in the GUI as you type it in)
+	 */
+	@Override
+	public IEntryDataType getDataType() {
+		return SimpleDataType.ofVariant(ColorWrapper.class);
+	}
+	
+	public int get() {
+		return getValue().getColor();
+	}
+	
+	/**
+	 *	Serializer override that can be used to properly display all values.
+	 * Required for arrays but a array specific helper function called "serializeArray" is provided.
+	 */
+	protected String serializedValue(MultilinePolicy policy, ColorWrapper value) {
+		return ColorWrapper.serialize(value.getColor());
+	}
+	
+	/**
+	 * Identifier for "Late Loading" Support.
+	 * Make sure its a unused one.
+	 */
+	@Override
+	public char getPrefix() {
+		return 'C';
+	}
+	
+	/**
+	 * Function for displaying "Range limitations" or valid values if these are easily detectable.
+	 * For Enum for example it returns all valid enum values, while for numbers the valid range.
+	 */
+	@Override
+	public String getLimitations() {
+		return "";
+	}
+	
+	/**
+	 * Network support. Write function.
+	 */
+	@Override
+	public void serialize(IWriteBuffer buffer) {
+		buffer.writeInt(get());
+	}
+	
+	/**
+	 * Network support. Read function.
+	 */
+	@Override
+	protected void deserializeValue(IReadBuffer buffer) {
+		set(new ColorWrapper(buffer.readInt()));
+	}
+	
+	/**
+	 * Helper function for late loading. This one is used registered with.
+	 */
+	public static ParseResult<ColorValue> parse(String key, String value, String... comment) {
+		ParseResult<Integer> result = ColorWrapper.parseInt(value);
+		if (result.hasError()) return result.withDefault(new ColorValue(key, 0, comment));
+		return ParseResult.success(new ColorValue(key, result.getValue(), comment));
+	}
+	
+	public static class ColorWrapper {
+		int color;
+		
+		public ColorWrapper(int color) {
+			this.color = color;
+		}
+		
+		public int getColor() {
+			return color;
+		}
+		
+		public static ParseResult<Integer> parseInt(String value) {
+			try { return ParseResult.success(Long.decode(value).intValue()); }
+			catch (Exception e) { return ParseResult.error(value, e, "Couldn't parse Colour"); }
+		}
+		
+		public static String serialize(long color) {
+			return "0x"+(Long.toHexString(0xFF00000000L | (color & 0xFFFFFFFFL)).substring(2));
+		}
+	}
+}
+```
+
+</p>
+</details>
+
+As can be seen it is rather straight forward.   
+The simple implementation is enough to use said custom entry.   
+But that alone doesn't support late loading. For that just 1 tiny function is required.   
+
+```java
+	public static void main(String...args) {
+		CONFIG = WATCHER.create(config);
+		CONFIG.addParser('C', ColorValue::parse);
+		CONFIG.register();
+	}
+```
+If your parse for some reason can't be parsed until a certain step you can also use "addTempParser" which just stores it as a string and parses it when the config entry is registered.

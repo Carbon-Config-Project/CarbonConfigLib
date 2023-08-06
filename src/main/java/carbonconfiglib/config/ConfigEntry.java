@@ -438,7 +438,7 @@ public abstract class ConfigEntry<T> {
 		}
 	}
 	
-	public static abstract class CollectionConfigEntry<T, E extends Collection<T>> extends ConfigEntry<E> {
+	public static abstract class CollectionConfigEntry<T, E extends Collection<T>> extends ConfigEntry<E> implements IArrayConfig {
 		
 		public CollectionConfigEntry(String key, E defaultValue, String... comment) {
 			super(key, defaultValue, comment);
@@ -831,7 +831,7 @@ public abstract class ConfigEntry<T> {
 		
 		@Override
 		protected ArrayValue copy() {
-			return new ArrayValue(getKey(), getDefault(), getComment());
+			return new ArrayValue(getKey(), getDefault(), getComment()).withFilter(filter);
 		}
 		
 		@Override
@@ -1073,7 +1073,7 @@ public abstract class ConfigEntry<T> {
 		}
 	}
 	
-	public static class ParsedArray<T> extends CollectionConfigEntry<T, List<T>> implements IArrayConfig {
+	public static class ParsedArray<T> extends CollectionConfigEntry<T, List<T>> {
 		IConfigSerializer<T> serializer;
 
 		public ParsedArray(String key, List<T> defaultValue, IConfigSerializer<T> serializer, String... comment) {
