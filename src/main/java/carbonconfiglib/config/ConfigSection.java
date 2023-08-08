@@ -76,7 +76,8 @@ public class ConfigSection {
 	}
 	
 	<V, T extends ConfigEntry<V>> T addParsed(T entry) {
-		entries.putIfAbsent(entry.getKey(), entry).setLoaded();
+		ConfigEntry<?> existingValue = entries.putIfAbsent(entry.getKey(), entry);
+		if(existingValue != null) existingValue.setLoaded();
 		return entry;
 	}
 	
