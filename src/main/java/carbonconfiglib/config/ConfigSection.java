@@ -81,7 +81,7 @@ public class ConfigSection {
 		return entry;
 	}
 	
-	public BoolValue addBool(String key, boolean value, String comment) {
+	public BoolValue addBool(String key, boolean value, String... comment) {
 		return add(new BoolValue(key, value, comment));
 	}
 	
@@ -89,7 +89,7 @@ public class ConfigSection {
 		return add(new BoolValue(key, value));
 	}
 	
-	public IntValue addInt(String key, int value, String comment) {
+	public IntValue addInt(String key, int value, String... comment) {
 		return add(new IntValue(key, value, comment));
 	}
 	
