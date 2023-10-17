@@ -53,6 +53,7 @@ public abstract class ConfigEntry<T> {
 	private boolean serverSync = false;
 	private boolean hidden = false;
 	private boolean wasLoaded = false;
+	private boolean forcedSuggestions = false;
 	private IReloadMode reload = null;
 	private SyncedConfig<ConfigEntry<T>> syncCache;
 	private List<ISuggestionProvider> providers = new ObjectArrayList<>();
@@ -185,6 +186,10 @@ public abstract class ConfigEntry<T> {
 		return used && (value.getClass().isArray() ? Objects.deepEquals(defaultValue, value) : Objects.equals(defaultValue, value));
 	}
 	
+	public final boolean areSuggestionsForced() {
+		return forcedSuggestions;
+	}
+	
 	public final IReloadMode getReloadState() {
 		return reload;
 	}
@@ -200,6 +205,12 @@ public abstract class ConfigEntry<T> {
 	@SuppressWarnings("unchecked")
 	public final <S extends ConfigEntry<T>> S setHidden() {
 		hidden = true;
+		return (S)this;
+	}
+	
+	@SuppressWarnings("unchecked")
+	public final <S extends ConfigEntry<T>> S forceSuggestions(boolean value) {
+		forcedSuggestions = value;
 		return (S)this;
 	}
 	
@@ -892,12 +903,14 @@ public abstract class ConfigEntry<T> {
 			super(key, defaultValue, comment);
 			this.enumClass = enumClass;
 			addSuggestionProvider(ISuggestionProvider.enums(enumClass));
+			forceSuggestions(true);
 		}
 		
 		public EnumList(String key, List<E> defaultValue, Class<E> enumClass) {
 			super(key, defaultValue);
 			this.enumClass = enumClass;
 			addSuggestionProvider(ISuggestionProvider.enums(enumClass));
+			forceSuggestions(true);
 		}
 		
 		public List<E> get() {

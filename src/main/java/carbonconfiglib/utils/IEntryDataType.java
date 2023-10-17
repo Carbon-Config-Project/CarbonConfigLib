@@ -11,6 +11,8 @@ import carbonconfiglib.api.ISuggestionProvider;
 import carbonconfiglib.api.ISuggestionProvider.Suggestion;
 import speiger.src.collections.objects.lists.ObjectArrayList;
 import speiger.src.collections.objects.maps.impl.hash.Object2ObjectOpenHashMap;
+import speiger.src.collections.objects.sets.ObjectOpenHashSet;
+import speiger.src.collections.objects.sets.ObjectSet;
 import speiger.src.collections.objects.utils.ObjectLists;
 
 /**
@@ -92,6 +94,7 @@ public interface IEntryDataType {
 		Map<String, Class<?>> customVariants = new Object2ObjectOpenHashMap<>();
 		Map<String, EntryDataType> customDisplay = new Object2ObjectOpenHashMap<>();
 		Map<String, List<ISuggestionProvider>> providers = new Object2ObjectOpenHashMap<>();
+		ObjectSet<String> forcedSuggestions = new ObjectOpenHashSet<>();
 		
 		public CompoundDataType with(String name, EntryDataType type) {
 			return withSuggestion(name, type);
@@ -119,6 +122,11 @@ public interface IEntryDataType {
 			if(provider != null && provider.length > 0) providers.computeIfAbsent(name, T -> new ObjectArrayList<>()).addAll(ObjectArrayList.wrap(provider));
 			return this;
 		}
+		
+		public CompoundDataType forceSuggestions(String name) {
+			forcedSuggestions.add(name);
+			return this;
+		}
 				
 		public List<Map.Entry<String, EntryDataType>> getCompound() {
 			return Collections.unmodifiableList(values);
@@ -130,6 +138,10 @@ public interface IEntryDataType {
 		
 		public EntryDataType getDisplay(String name) {
 			return customDisplay.get(name);
+		}
+		
+		public boolean isForcedSuggestion(String name) {
+			return forcedSuggestions.contains(name);
 		}
 		
 		public List<ISuggestionProvider> getProviders(String name) {
