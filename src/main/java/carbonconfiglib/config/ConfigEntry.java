@@ -1035,12 +1035,14 @@ public abstract class ConfigEntry<T> {
 			super(key, defaultValue, comment);
 			this.enumClass = enumClass;
 			addSuggestionProvider(ISuggestionProvider.enums(enumClass));
+			forceSuggestions(true);
 		}
 		
 		public EnumValue(String key, E defaultValue, Class<E> enumClass) {
 			super(key, defaultValue);
 			this.enumClass = enumClass;
 			addSuggestionProvider(ISuggestionProvider.enums(enumClass));
+			forceSuggestions(true);
 		}
 		
 		@Override
