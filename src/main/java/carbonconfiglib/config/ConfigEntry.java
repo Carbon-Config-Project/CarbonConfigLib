@@ -959,11 +959,11 @@ public abstract class ConfigEntry<T> {
 			if(entries == null) return ParseResult.partial(false, NullPointerException::new, "Value isn't allowed to be null");
 			for(int i = 0,m=entries.size();i<m;i++) {
 				ParseResult<E> result = Helpers.parseEnum(enumClass, entries.get(i));
-				if(result.hasError()) return result.onlyError("Value must be one of the following: "+Arrays.toString(EnumValue.toArray(enumClass)));
+				if(result.hasError()) return result.onlyError("Value must be one of the following: "+Arrays.toString(Helpers.toArray(enumClass)));
 			}
 			return ParseResult.success(true);
 		}
-
+		
 		@Override
 		public void setArray(List<String> entries) {
 			StringJoiner joiner = new StringJoiner(",");
@@ -984,7 +984,7 @@ public abstract class ConfigEntry<T> {
 			for(int i = 0,m=value.size();i<m;i++) {
 				E entry = value.get(i);
 				if(entry == null) return ParseResult.partial(false, NullPointerException::new, "Value isn't allowed to be null");
-				if(!enumClass.isInstance(value)) return ParseResult.partial(false, IllegalArgumentException::new, "Value must be one of the following: "+Arrays.toString(EnumValue.toArray(enumClass)));
+				if(!enumClass.isInstance(value)) return ParseResult.partial(false, IllegalArgumentException::new, "Value must be one of the following: "+Arrays.toString(Helpers.toArray(enumClass)));
 			}
 			return ParseResult.success(true);
 		}
@@ -1006,7 +1006,7 @@ public abstract class ConfigEntry<T> {
 
 		@Override
 		public String getLimitations() {
-			return "Must be one of " + Arrays.toString(EnumValue.toArray(enumClass));
+			return "Must be one of " + Arrays.toString(Helpers.toArray(enumClass));
 		}
 
 		@Override
@@ -1067,7 +1067,7 @@ public abstract class ConfigEntry<T> {
 		
 		@Override
 		public ParseResult<Boolean> canSet(E value) {
-			return ParseResult.result(enumClass.isInstance(value), IllegalArgumentException::new, "Value must be one of the following: "+Arrays.toString(toArray(enumClass)));
+			return ParseResult.result(enumClass.isInstance(value), IllegalArgumentException::new, "Value must be one of the following: "+Arrays.toString(Helpers.toArray(enumClass)));
 		}
 		
 		public E get() {
@@ -1076,17 +1076,9 @@ public abstract class ConfigEntry<T> {
 		
 		@Override
 		public String getLimitations() {
-			return "Must be one of " + Arrays.toString(toArray(enumClass));
+			return "Must be one of " + Arrays.toString(Helpers.toArray(enumClass));
 		}
-		
-		private static <E extends Enum<E>> String[] toArray(Class<E> enumClass) {
-			E[] array = enumClass.getEnumConstants();
-			String[] values = new String[array.length];
-			for(int i = 0,m=array.length;i<m;i++) {
-				values[i] = array[i].name();
-			}
-			return values;
-		}
+
 		
 		@Override
 		public ParseResult<E> parseValue(String value) {
