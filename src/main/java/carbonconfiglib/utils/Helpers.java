@@ -99,4 +99,9 @@ public class Helpers {
 		try { return ParseResult.success(Double.parseDouble(value)); } 
 		catch (Exception e) { return ParseResult.error(value, e, "Couldn't parse Number"); }
 	}
+	
+	public static <E extends Enum<E>> ParseResult<E> parseEnum(Class<E> enumClass, String value) {
+		try { return ParseResult.success(Enum.valueOf(enumClass, value)); }
+		catch (Exception e) { return ParseResult.error(value, e); }
+	}
 }
