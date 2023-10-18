@@ -80,9 +80,10 @@ public final class ConfigHandler {
 		parsers.put('B', BoolValue::parse);
 		parsers.put('S', StringValue::parse);
 		parsers.put('A', ArrayValue::parse);
-		parsers.put('E', TempValue::parse);
-		parsers.put('p', TempValue::parse);
-		parsers.put('P', TempValue::parse);
+		parsers.put('E', TempValue::parseTemp);
+		parsers.put('e', TempValue::parseTemp);
+		parsers.put('p', TempValue::parseTemp);
+		parsers.put('P', TempValue::parseTemp);
 	}
 	
 	ConfigHandler setOwner(FileSystemWatcher owner) {
@@ -92,7 +93,7 @@ public final class ConfigHandler {
 	}
 	
 	public void addTempParser(char id) {
-		addParser(id, TempValue::parse);
+		addParser(id, TempValue::parseTemp);
 	}
 	
 	public void addParser(char id, IConfigParser parser) {

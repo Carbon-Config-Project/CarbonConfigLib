@@ -13,7 +13,8 @@ import java.util.function.Predicate;
 
 import carbonconfiglib.api.IConfigSerializer;
 import carbonconfiglib.api.IReloadMode;
-import carbonconfiglib.api.ISuggestedEnum;
+import carbonconfiglib.api.ISuggestionProvider;
+import carbonconfiglib.api.ISuggestionProvider.Suggestion;
 import carbonconfiglib.api.buffer.IReadBuffer;
 import carbonconfiglib.api.buffer.IWriteBuffer;
 import carbonconfiglib.utils.Helpers;
@@ -52,9 +53,10 @@ public abstract class ConfigEntry<T> {
 	private boolean serverSync = false;
 	private boolean hidden = false;
 	private boolean wasLoaded = false;
+	private boolean forcedSuggestions = false;
 	private IReloadMode reload = null;
 	private SyncedConfig<ConfigEntry<T>> syncCache;
-	private List<Suggestion> suggestions = new ObjectArrayList<>();
+	private List<ISuggestionProvider> providers = new ObjectArrayList<>();
 
 	public ConfigEntry(String key, T defaultValue, String... comment) {
 		if (Helpers.validateString(key))
@@ -84,7 +86,7 @@ public abstract class ConfigEntry<T> {
 	
 	protected ConfigEntry<T> deepCopy() {
 		ConfigEntry<T> copy = copy();
-		copy.suggestions.addAll(suggestions);
+		copy.providers.addAll(providers);
 		copy.hidden = hidden;
 		copy.wasLoaded = wasLoaded;
 		return copy;
@@ -124,32 +126,37 @@ public abstract class ConfigEntry<T> {
 	
 	public abstract IEntryDataType getDataType();
 	
-	protected final <S extends ConfigEntry<T>> S addSuggestionInternal(String value) {
-		return addSuggestionInternal(value, value, null);
-	}
-	
-	protected final <S extends ConfigEntry<T>> S addSuggestionInternal(String name, String value) {
-		return addSuggestionInternal(name, value, null);
-	}
-	
-	protected final <S extends ConfigEntry<T>> S addSuggestionInternal(Object extra, String value) {
-		return addSuggestionInternal(value, value, extra);
+	public final <S extends ConfigEntry<T>> S addSingleSuggestion(Suggestion suggestion) {
+		return addSuggestionProvider(ISuggestionProvider.single(suggestion));
 	}
 	
 	@SuppressWarnings("unchecked")
-	protected final <S extends ConfigEntry<T>> S addSuggestionInternal(String name, String value, Object extra) {
-		if(!canSetValue(value).getValue()) throw new IllegalArgumentException("Value ["+value+"] is not valid. Meaning it can not be a suggestion");
-		suggestions.add(new Suggestion(name, value, extra));
+	public final <S extends ConfigEntry<T>> S addSuggestionProvider(ISuggestionProvider provider) {
+		providers.add(provider);
 		return (S)this;
 	}
-	
-	public final List<Suggestion> getSuggestions() {
+		
+	public final List<Suggestion> getSuggestions(Predicate<Suggestion> filter) {
+		List<Suggestion> suggestions = new ObjectArrayList<>();
+		for(ISuggestionProvider provider : this.providers) {
+			provider.provideSuggestions(T -> addInternal(T, suggestions), filter);
+		}
 		return suggestions;
+	}
+	
+	private void addInternal(Suggestion value, List<Suggestion> output) {
+		if(canSetValue(value.getValue()).isValid()) {
+			output.add(value);
+		}
+	}
+	
+	public final List<ISuggestionProvider> getProviders() {
+		return providers;
 	}
 	
 	@SuppressWarnings("unchecked")
 	public final <S extends ConfigEntry<T>> S clearSuggestions() {
-		suggestions.clear();
+		providers.clear();
 		return (S)this;
 	}
 	
@@ -179,6 +186,10 @@ public abstract class ConfigEntry<T> {
 		return used && (value.getClass().isArray() ? Objects.deepEquals(defaultValue, value) : Objects.equals(defaultValue, value));
 	}
 	
+	public final boolean areSuggestionsForced() {
+		return forcedSuggestions;
+	}
+	
 	public final IReloadMode getReloadState() {
 		return reload;
 	}
@@ -194,6 +205,12 @@ public abstract class ConfigEntry<T> {
 	@SuppressWarnings("unchecked")
 	public final <S extends ConfigEntry<T>> S setHidden() {
 		hidden = true;
+		return (S)this;
+	}
+	
+	@SuppressWarnings("unchecked")
+	public final <S extends ConfigEntry<T>> S forceSuggestions(boolean value) {
+		forcedSuggestions = value;
 		return (S)this;
 	}
 	
@@ -329,42 +346,6 @@ public abstract class ConfigEntry<T> {
 		public void setArray(List<String> entries);
 	}
 	
-	public static class Suggestion {
-		String name;
-		String value;
-		Object extra;
-		
-		public Suggestion(String value) {
-			this(value, value, null);
-		}
-		
-		public Suggestion(String value, Object extra) {
-			this(value, value, extra);
-		}
-		
-		public Suggestion(String name, String value) {
-			this(name, value, null);
-		}
-		
-		public Suggestion(String name, String value, Object extra) {
-			this.name = name;
-			this.value = value;
-			this.extra = extra;;
-		}
-		
-		public String getName() {
-			return name;
-		}
-		
-		public String getValue() {
-			return value;
-		}
-		
-		public Object getExtra() {
-			return extra;
-		}
-	}
-	
 	public static abstract class BasicConfigEntry<T> extends ConfigEntry<T> {
 		
 		public BasicConfigEntry(String key, T defaultValue, String... comment) {
@@ -373,26 +354,27 @@ public abstract class ConfigEntry<T> {
 		
 		@SuppressWarnings("unchecked")
 		public final <S extends BasicConfigEntry<T>> S addSuggestions(T... values) {
+			List<Suggestion> suggestions = new ObjectArrayList<>();
 			for(T value : values) {
-				addSuggestionInternal(serializedValue(MultilinePolicy.DISABLED, value));
+				suggestions.add(Suggestion.value(serializedValue(MultilinePolicy.DISABLED, value)));
 			}
-			return (S)this;
+			return addSuggestionProvider(ISuggestionProvider.list(suggestions));
 		}
 		
 		public final <S extends BasicConfigEntry<T>> S addSuggestion(T value) {
-			return addSuggestionInternal(serializedValue(MultilinePolicy.DISABLED, value));
+			return addSingleSuggestion(Suggestion.value(serializedValue(MultilinePolicy.DISABLED, value)));
 		}
 		
-		public final <S extends BasicConfigEntry<T>> S addSuggestion(T value, Object extra) {
-			return addSuggestionInternal(extra, serializedValue(MultilinePolicy.DISABLED, value));
+		public final <S extends BasicConfigEntry<T>> S addSuggestion(T value, Object type) {
+			return addSingleSuggestion(Suggestion.typedValue(serializedValue(MultilinePolicy.DISABLED, value), type));
 		}
 		
 		public final <S extends BasicConfigEntry<T>> S addSuggestion(String name, T value) {
-			return addSuggestionInternal(name, serializedValue(MultilinePolicy.DISABLED, value));
+			return addSingleSuggestion(Suggestion.namedValue(name, serializedValue(MultilinePolicy.DISABLED, value)));
 		}
 		
-		public final <S extends BasicConfigEntry<T>> S addSuggestion(String name, T value, Object extra) {
-			return addSuggestionInternal(name, serializedValue(MultilinePolicy.DISABLED, value), extra);
+		public final <S extends BasicConfigEntry<T>> S addSuggestion(String name, T value, Object type) {
+			return addSingleSuggestion(Suggestion.namedTypeValue(name, serializedValue(MultilinePolicy.DISABLED, value), type));
 		}
 	}
 	
@@ -408,26 +390,27 @@ public abstract class ConfigEntry<T> {
 		
 		@SuppressWarnings("unchecked")
 		public final <S extends ArrayConfigEntry<T>> S addSuggestions(T... values) {
+			List<Suggestion> suggestions = new ObjectArrayList<>();
 			for(T value : values) {
-				addSuggestionInternal(serializedValue(MultilinePolicy.DISABLED, toArray(value)));
+				suggestions.add(Suggestion.value(serializedValue(MultilinePolicy.DISABLED, toArray(value))));
 			}
-			return (S)this;
+			return addSuggestionProvider(ISuggestionProvider.list(suggestions));
 		}
 		
 		public final <S extends ArrayConfigEntry<T>> S addSuggestion(T value) {
-			return addSuggestionInternal(serializedValue(MultilinePolicy.DISABLED, toArray(value)));
+			return addSingleSuggestion(Suggestion.value(serializedValue(MultilinePolicy.DISABLED, toArray(value))));
 		}
 		
-		public final <S extends ArrayConfigEntry<T>> S addSuggestion(T value, Object extra) {
-			return addSuggestionInternal(extra, serializedValue(MultilinePolicy.DISABLED, toArray(value)));
+		public final <S extends ArrayConfigEntry<T>> S addSuggestion(T value, Object type) {
+			return addSingleSuggestion(Suggestion.typedValue(serializedValue(MultilinePolicy.DISABLED, toArray(value)), type));
 		}
 		
 		public final <S extends ArrayConfigEntry<T>> S addSuggestion(String name, T value) {
-			return addSuggestionInternal(name, serializedValue(MultilinePolicy.DISABLED, toArray(value)));
+			return addSingleSuggestion(Suggestion.namedValue(name, serializedValue(MultilinePolicy.DISABLED, toArray(value))));
 		}
 		
-		public final <S extends ArrayConfigEntry<T>> S addSuggestion(String name, T value, Object extra) {
-			return addSuggestionInternal(name, serializedValue(MultilinePolicy.DISABLED, toArray(value)), extra);
+		public final <S extends ArrayConfigEntry<T>> S addSuggestion(String name, T value, Object type) {
+			return addSingleSuggestion(Suggestion.namedTypeValue(name, serializedValue(MultilinePolicy.DISABLED, toArray(value)), type));
 		}
 		
 		@SuppressWarnings("unchecked")
@@ -450,26 +433,27 @@ public abstract class ConfigEntry<T> {
 		
 		@SuppressWarnings("unchecked")
 		public final <S extends CollectionConfigEntry<T, E>> S addSuggestions(T... values) {
+			List<Suggestion> suggestions = new ObjectArrayList<>();
 			for(T value : values) {
-				addSuggestionInternal(serializedValue(MultilinePolicy.DISABLED, create(value)));
+				suggestions.add(Suggestion.value(serializedValue(MultilinePolicy.DISABLED, create(value))));
 			}
-			return (S)this;
+			return addSuggestionProvider(ISuggestionProvider.list(suggestions));
 		}
 		
 		public final <S extends CollectionConfigEntry<T, E>> S addSuggestion(T value) {
-			return addSuggestionInternal(serializedValue(MultilinePolicy.DISABLED, create(value)));
+			return addSingleSuggestion(Suggestion.value(serializedValue(MultilinePolicy.DISABLED, create(value))));
 		}
 		
-		public final <S extends CollectionConfigEntry<T, E>> S addSuggestion(T value, Object extra) {
-			return addSuggestionInternal(extra, serializedValue(MultilinePolicy.DISABLED, create(value)));
+		public final <S extends CollectionConfigEntry<T, E>> S addSuggestion(T value, Object type) {
+			return addSingleSuggestion(Suggestion.typedValue(serializedValue(MultilinePolicy.DISABLED, create(value)), type));
 		}
 		
 		public final <S extends CollectionConfigEntry<T, E>> S addSuggestion(String name, T value) {
-			return addSuggestionInternal(name, serializedValue(MultilinePolicy.DISABLED, create(value)));
+			return addSingleSuggestion(Suggestion.namedValue(name, serializedValue(MultilinePolicy.DISABLED, create(value))));
 		}
 		
 		public final <S extends CollectionConfigEntry<T, E>> S addSuggestion(String name, T value, Object extra) {
-			return addSuggestionInternal(name, serializedValue(MultilinePolicy.DISABLED, create(value)), extra);
+			return addSingleSuggestion(Suggestion.namedTypeValue(name, serializedValue(MultilinePolicy.DISABLED, create(value)), extra));
 		}
 		
 		protected abstract E create(T value);
@@ -912,27 +896,153 @@ public abstract class ConfigEntry<T> {
 		}
 	}
 	
+	public static class EnumList<E extends Enum<E>> extends CollectionConfigEntry<E, List<E>> {
+		Class<E> enumClass;
+		
+		public EnumList(String key, List<E> defaultValue, Class<E> enumClass, String... comment) {
+			super(key, defaultValue, comment);
+			this.enumClass = enumClass;
+			addSuggestionProvider(ISuggestionProvider.enums(enumClass));
+			forceSuggestions(true);
+		}
+		
+		public EnumList(String key, List<E> defaultValue, Class<E> enumClass) {
+			super(key, defaultValue);
+			this.enumClass = enumClass;
+			addSuggestionProvider(ISuggestionProvider.enums(enumClass));
+			forceSuggestions(true);
+		}
+		
+		public List<E> get() {
+			return getValue();
+		}
+		
+		@Override
+		public ParseResult<List<E>> parseValue(String value) {
+			List<E> result = new ObjectArrayList<>();
+			for(String s : Helpers.splitArray(value, ",")) {
+				ParseResult<E> entry = Helpers.parseEnum(enumClass, s);
+				if(entry.isValid()) result.add(entry.getValue());
+			}
+			return ParseResult.success(result);
+		}
+		
+		@Override
+		protected String serializedValue(MultilinePolicy policy, List<E> value) {
+			String[] result = new String[value.size()];
+			for(int i = 0,m=value.size();i<m;i++) {
+				result[i] = value.get(i).name();
+			}
+			return serializeArray(policy, result);
+		}
+		
+		@Override
+		public List<String> getEntries() {
+			List<String> values = new ObjectArrayList<>();
+			for(E value : getValue()) {
+				values.add(value.name());
+			}
+			return values;
+		}
+
+		@Override
+		public List<String> getDefaults() {
+			List<String> values = new ObjectArrayList<>();
+			for(E value : getDefault()) {
+				values.add(value.name());
+			}
+			return values;
+		}
+		
+		@Override
+		public ParseResult<Boolean> canSetArray(List<String> entries) {
+			if(entries == null) return ParseResult.partial(false, NullPointerException::new, "Value isn't allowed to be null");
+			for(int i = 0,m=entries.size();i<m;i++) {
+				ParseResult<E> result = Helpers.parseEnum(enumClass, entries.get(i));
+				if(result.hasError()) return result.onlyError("Value must be one of the following: "+Arrays.toString(Helpers.toArray(enumClass)));
+			}
+			return ParseResult.success(true);
+		}
+		
+		@Override
+		public void setArray(List<String> entries) {
+			StringJoiner joiner = new StringJoiner(",");
+			for(String s : entries) {
+				joiner.add(s);
+			}
+			deserializeValue(joiner.toString());
+		}
+
+		@Override
+		protected List<E> create(E value) {
+			return ObjectLists.singleton(value);
+		}
+		
+		@Override
+		public ParseResult<Boolean> canSet(List<E> value) {
+			if(value == null) return ParseResult.partial(false, NullPointerException::new, "Value isn't allowed to be null");
+			for(int i = 0,m=value.size();i<m;i++) {
+				E entry = value.get(i);
+				if(entry == null) return ParseResult.partial(false, NullPointerException::new, "Value isn't allowed to be null");
+				if(!enumClass.isInstance(value)) return ParseResult.partial(false, IllegalArgumentException::new, "Value must be one of the following: "+Arrays.toString(Helpers.toArray(enumClass)));
+			}
+			return ParseResult.success(true);
+		}
+		
+		@Override
+		protected EnumList<E> copy() {
+			return new EnumList<>(getKey(), getDefault(), enumClass, getComment());
+		}
+		
+		@Override
+		public IEntryDataType getDataType() {
+			return EntryDataType.ENUM.toSimpleType();
+		}
+
+		@Override
+		public char getPrefix() {
+			return 'e';
+		}
+
+		@Override
+		public String getLimitations() {
+			return "Must be one of " + Arrays.toString(Helpers.toArray(enumClass));
+		}
+
+		@Override
+		public void serialize(IWriteBuffer buffer) {
+			List<E> value = getValue();
+			buffer.writeVarInt(value.size());
+			value.forEach(buffer::writeEnum);
+		}
+
+		@Override
+		protected void deserializeValue(IReadBuffer buffer) {
+			List<E> list = new ObjectArrayList<>();
+			int size = buffer.readVarInt();
+			for(int i = 0;i<size;i++) {
+				list.add(buffer.readEnum(enumClass));
+			}
+			set(list);
+		}
+		
+	}
+	
 	public static class EnumValue<E extends Enum<E>> extends BasicConfigEntry<E> {
 		private Class<E> enumClass;
 		
 		public EnumValue(String key, E defaultValue, Class<E> enumClass, String... comment) {
 			super(key, defaultValue, comment);
 			this.enumClass = enumClass;
-			addSuggestions();
+			addSuggestionProvider(ISuggestionProvider.enums(enumClass));
+			forceSuggestions(true);
 		}
 		
 		public EnumValue(String key, E defaultValue, Class<E> enumClass) {
 			super(key, defaultValue);
 			this.enumClass = enumClass;
-			addSuggestions();
-		}
-		
-		private void addSuggestions() {
-			for(E value : enumClass.getEnumConstants()) {
-				ISuggestedEnum<E> wrapper = ISuggestedEnum.getWrapper(value);
-				if(wrapper != null) addSuggestion(wrapper.getName(value), value);
-				else addSuggestion(value); 
-			}
+			addSuggestionProvider(ISuggestionProvider.enums(enumClass));
+			forceSuggestions(true);
 		}
 		
 		@Override
@@ -952,12 +1062,12 @@ public abstract class ConfigEntry<T> {
 		
 		@Override
 		public SimpleDataType getDataType() {
-			return EntryDataType.STRING.toSimpleType();
+			return EntryDataType.ENUM.toSimpleType();
 		}
 		
 		@Override
 		public ParseResult<Boolean> canSet(E value) {
-			return ParseResult.result(enumClass.isInstance(value), IllegalArgumentException::new, "Value must be one of the following: "+Arrays.toString(toArray()));
+			return ParseResult.result(enumClass.isInstance(value), IllegalArgumentException::new, "Value must be one of the following: "+Arrays.toString(Helpers.toArray(enumClass)));
 		}
 		
 		public E get() {
@@ -966,22 +1076,13 @@ public abstract class ConfigEntry<T> {
 		
 		@Override
 		public String getLimitations() {
-			return "Must be one of " + Arrays.toString(toArray());
+			return "Must be one of " + Arrays.toString(Helpers.toArray(enumClass));
 		}
-		
-		private String[] toArray() {
-			E[] array = enumClass.getEnumConstants();
-			String[] values = new String[array.length];
-			for(int i = 0,m=array.length;i<m;i++) {
-				values[i] = array[i].name();
-			}
-			return values;
-		}
+
 		
 		@Override
 		public ParseResult<E> parseValue(String value) {
-			try { return ParseResult.success(Enum.valueOf(enumClass, value)); }
-			catch (Exception e) { return ParseResult.error(value, e); }
+			return Helpers.parseEnum(enumClass, value);
 		}
 		
 		@Override
