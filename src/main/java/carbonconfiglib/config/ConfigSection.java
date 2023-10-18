@@ -9,6 +9,7 @@ import carbonconfiglib.api.IConfigSerializer;
 import carbonconfiglib.config.ConfigEntry.ArrayValue;
 import carbonconfiglib.config.ConfigEntry.BoolValue;
 import carbonconfiglib.config.ConfigEntry.DoubleValue;
+import carbonconfiglib.config.ConfigEntry.EnumList;
 import carbonconfiglib.config.ConfigEntry.EnumValue;
 import carbonconfiglib.config.ConfigEntry.IntValue;
 import carbonconfiglib.config.ConfigEntry.ParsedArray;
@@ -137,6 +138,14 @@ public class ConfigSection {
 		return add(new EnumValue<>(key, value, enumClass));
 	}
 	
+	public <E extends Enum<E>> EnumList<E> addEnumList(String key, List<E> value, Class<E> enumClass, String... comment) {
+		return add(new EnumList<>(key, value, enumClass, comment));
+	}
+	
+	public <E extends Enum<E>> EnumList<E> addEnumList(String key, List<E> value, Class<E> enumClass) {
+		return add(new EnumList<>(key, value, enumClass));
+	}
+	
 	public <T> ParsedValue<T> addParsed(String key, T value, IConfigSerializer<T> parsers, String... comment) {
 		return add(new ParsedValue<T>(key, value, parsers, comment));
 	}
@@ -239,6 +248,10 @@ public class ConfigSection {
 	
 	public String getName() {
 		return name;
+	}
+	
+	public String[] getComment() {
+		return comment;
 	}
 	
 	public String getSectionPath() {

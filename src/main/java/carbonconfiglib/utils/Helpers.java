@@ -102,7 +102,7 @@ public class Helpers {
 	
 	public static <E extends Enum<E>> ParseResult<E> parseEnum(Class<E> enumClass, String value) {
 		try { return ParseResult.success(Enum.valueOf(enumClass, value)); }
-		catch (Exception e) { return ParseResult.error(value, e, "Enum isn't valid, Must be one of: "+toArray(enumClass)); }
+		catch (Exception e) { return ParseResult.error(value, e, "Enum isn't valid, Must be one of: "+Arrays.toString(toArray(enumClass))); }
 	}
 	
 	public static <E extends Enum<E>> String[] toArray(Class<E> enumClass) {
