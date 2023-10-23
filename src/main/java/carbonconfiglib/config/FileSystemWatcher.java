@@ -149,14 +149,18 @@ public class FileSystemWatcher {
 			while ((key = watchService.poll()) != null) {
 				for (WatchEvent<?> event : key.pollEvents()) {
 					ConfigHandler handler = configs.get(folders.get(key).resolve(((Path) event.context()).getFileName()));
-					if (handler != null) {
-						if(handler.reload() && changeListener != null && syncedConfigs.contains(handler)) {
-							changeListener.onConfigChanged(handler);
-						}
+					if (handler != null && handler.reload()) {
+						onConfigChanged(handler);
 					}
 				}
 				key.reset();
 			}
+		}
+	}
+	
+	void onConfigChanged(ConfigHandler handler) {
+		if(changeListener != null && syncedConfigs.contains(handler)) {
+			changeListener.onConfigChanged(handler);
 		}
 	}
 	
