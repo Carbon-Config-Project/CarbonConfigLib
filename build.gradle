@@ -1,6 +1,7 @@
 plugins {
     id 'java'
     id 'eclipse'
+    id 'maven-publish'
 }
 
 group 'carbonconfiglib'
@@ -22,9 +23,60 @@ dependencies {
 }
 
 jar {
-  from {
-  	configurations.compileClasspath.collect { 
-  		it.isDirectory() ? it : zipTree(it)
-  	}
-  }
+	from {
+		configurations.compileClasspath.collect { 
+			it.isDirectory() ? it : zipTree(it)
+		}
+	}
+}
+
+task javadocJar(type: Jar) {
+    from javadoc
+    archiveClassifier = 'javadoc'
+}
+
+task srcJar(type: Jar) {
+    from sourceSets.main.allSource
+    archiveClassifier = 'sources'
+}
+
+publishing {
+	publications {
+		mavenJava(MavenPublication) {
+			pom {
+				name = 'Carbon Config'
+				description = 'Carbon Config is a Library that allows simple ways to create/manage configuration files'
+				url = 'https://github.com/Carbon-Config-Project/CarbonConfigLib'
+				version = project.version
+				artifactId = project.archivesBaseName.replace(" ", "-")
+				groupId = 'com.carbonconfig'
+				from components.java
+				artifact tasks.srcJar
+				artifact tasks.javadocJar
+				licenses {
+					license {
+						name = 'The Apache License, Version 2.0'
+						url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+					}
+				}
+				developers {
+					developer {
+						id = 'meduris'
+						name = 'Meduris'
+					}
+					developer {
+						id = 'speiger'
+						name = 'Speiger'
+					}
+				}
+				scm {
+					url = 'https://github.com/Carbon-Config-Project/CarbonConfigLib'
+				}
+				issueManagement {
+					system = 'github'
+					url = 'https://github.com/Carbon-Config-Project/CarbonConfigLib/issues'
+				}
+			}
+		}
+	}
 }
