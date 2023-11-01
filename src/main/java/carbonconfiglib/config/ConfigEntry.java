@@ -984,7 +984,7 @@ public abstract class ConfigEntry<T> {
 			for(int i = 0,m=value.size();i<m;i++) {
 				E entry = value.get(i);
 				if(entry == null) return ParseResult.partial(false, NullPointerException::new, "Value isn't allowed to be null");
-				if(!enumClass.isInstance(value)) return ParseResult.partial(false, IllegalArgumentException::new, "Value must be one of the following: "+Arrays.toString(Helpers.toArray(enumClass)));
+				if(!enumClass.isInstance(entry)) return ParseResult.partial(false, IllegalArgumentException::new, "Value must be one of the following: "+Arrays.toString(Helpers.toArray(enumClass)));
 			}
 			return ParseResult.success(true);
 		}
