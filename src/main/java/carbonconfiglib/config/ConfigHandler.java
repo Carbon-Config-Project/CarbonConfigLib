@@ -360,6 +360,7 @@ public final class ConfigHandler {
 	public void save() {
 		save(configFile);
 		if(owner != null) owner.onConfigChanged(this);
+		onSynced();
 	}
 	
 	public void saveQuietly() {
