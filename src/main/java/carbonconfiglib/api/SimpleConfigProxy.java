@@ -35,8 +35,8 @@ public class SimpleConfigProxy implements IConfigProxy
 	}
 	
 	@Override
-	public List<Path> getBasePaths() {
-		return ObjectLists.singleton(path);
+	public Path getBasePaths(Path relativeFile) {
+		return path;
 	}
 	
 	@Override

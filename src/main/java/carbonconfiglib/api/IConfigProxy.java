@@ -20,7 +20,7 @@ import java.util.List;
  */
 public interface IConfigProxy
 {
-	public List<Path> getBasePaths();
+	public Path getBasePaths(Path relativeFile);
 	public List<? extends IPotentialTarget> getPotentialConfigs();
 	public boolean isDynamicProxy();
 	

@@ -4,6 +4,7 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.EnumSet;
 import java.util.List;
 
@@ -166,8 +167,8 @@ public final class ConfigHandler {
 	public void createDefaultConfig() {
 		if(!registered) return;
 		if(proxy.isDynamicProxy() && setting.contains(AutomationType.AUTO_LOAD)) {
-			List<Path> baseFolders = proxy.getBasePaths();
-			Path file = createConfigFile(baseFolders.get(baseFolders.size()-1));
+			Path baseFolder = proxy.getBasePaths(createConfigFile(Paths.get("")));
+			Path file = createConfigFile(baseFolder);
 			if(Files.notExists(file)) {
 				save(file);
 				wasSaving--;
@@ -209,24 +210,11 @@ public final class ConfigHandler {
 	}
 	
 	private void findConfigFile() {
-		List<Path> baseFolders = proxy.getBasePaths();
-		if(baseFolders.isEmpty()) throw new IllegalStateException("Proxy has no Folders");
-		if(baseFolders.size() == 1) {
-			configFile = createConfigFile(baseFolders.get(0));
-			cfgDir = configFile.getParent();
-			Helpers.ensureFolder(cfgDir);
-			return;
-		}
-		
-		for(int i = baseFolders.size()-1,m=i;i>=0;i--) {
-			Path file = createConfigFile(baseFolders.get(i));
-			if(Files.notExists(file)) {
-				if(i == m) save(file);
-				else Helpers.copyFile(createConfigFile(baseFolders.get(i+1)), file);
-			}
-		}
-		configFile = createConfigFile(baseFolders.get(0));
+		Path baseFolder = proxy.getBasePaths(createConfigFile(Paths.get("")));
+		if(baseFolder == null) throw new IllegalStateException("Proxy has no Folder");
+		configFile = createConfigFile(baseFolder);
 		cfgDir = configFile.getParent();
+		Helpers.ensureFolder(cfgDir);
 	}
 	
 	public void addLoadedListener(Runnable listener) {

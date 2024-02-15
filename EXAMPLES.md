@@ -217,8 +217,9 @@ Another way to do this is like this:
 	}
 	
 	public static class MyCustomProxy implements IConfigProxy {
-		public List<Path> getBasePath() {
-			return Arrays.asList(Paths.get("MyBaseFolder/newInstance"), Paths.get("MyBaseFolder"));
+		public Path getBasePath(Path configFile) {
+			Path path = Paths.get("MyBaseFolder/newInstance");
+			return Files.exist(path.resolve(configFile) ? path : Paths.get("MyBaseFolder");
 		}
 		
 		public boolean isDynamicProxy() {
@@ -226,7 +227,8 @@ Another way to do this is like this:
 		}
 		
 		public List<? extends IPotentialTarget> getPotentialConfigs() {
-			return getBasePath().stream().map(path -> new SimpleTarget(path, Helpers.firstLetterUppercase(path.getFileName().toString()))).toList();
+			List<Path> potentialPaths = Arrays.asList(Paths.get("MyBaseFolder/newInstance"), Paths.get("MyBaseFolder"));
+			return potentialPaths.stream().map(path -> new SimpleTarget(path, Helpers.firstLetterUppercase(path.getFileName().toString()))).toList();
 		}
 	}
 ```
