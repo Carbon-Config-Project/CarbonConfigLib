@@ -170,6 +170,7 @@ public final class ConfigHandler {
 			Path baseFolder = proxy.getBasePaths(createConfigFile(Paths.get("")));
 			Path file = createConfigFile(baseFolder);
 			if(Files.notExists(file)) {
+				Helpers.ensureFolder(file.getParent());
 				save(file);
 				wasSaving--;
 			}

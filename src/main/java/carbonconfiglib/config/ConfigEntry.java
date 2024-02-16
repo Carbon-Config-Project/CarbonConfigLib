@@ -1246,7 +1246,7 @@ public abstract class ConfigEntry<T> {
 			if(entries == null) return ParseResult.partial(false, NullPointerException::new, "Value isn't allowed to be null");
 			for(int i = 0,m=entries.size();i<m;i++) {
 				ParseResult<T> result = serializer.deserialize(Helpers.splitArray(entries.get(i), ";"));
-				if(result.hasError()) return result.onlyError();
+				if(result.hasError()) return result.withDefault(false);
 				ParseResult<Boolean> valid = serializer.isValid(result.getValue());
 				if(valid.hasError()) return valid;
 			}
