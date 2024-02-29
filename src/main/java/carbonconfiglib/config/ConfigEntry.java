@@ -319,8 +319,8 @@ public abstract class ConfigEntry<T> {
 		String line = serializedValue(policy, value);
 		if(policy != MultilinePolicy.DISABLED && this instanceof IArrayConfig && line.contains("\n")) {
 			String indent = "\n"+Helpers.generateIndent(indentationLevel+1);
-			builder.append(" < ").append(indent).append(line.replaceAll("\\R", indent));
-			builder.append(indentation).append(">");
+			builder.append("<<<").append(indent).append(line.replaceAll("\\R", indent));
+			builder.append(indentation).append(">>>");
 		}
 		else {
 			builder.append(line);
@@ -512,7 +512,6 @@ public abstract class ConfigEntry<T> {
 				return "Range: < "+max;
 			}
 			if(max == Integer.MAX_VALUE) {
-				if(min == Integer.MIN_VALUE) return "";
 				return "Range: > "+min;
 			}
 			return "Range: "+min+" ~ "+max;
@@ -616,12 +615,11 @@ public abstract class ConfigEntry<T> {
 		
 		@Override
 		public String getLimitations() {
-			if(min == Double.MIN_VALUE) {
+			if(min == -Double.MAX_VALUE) {
 				if(max == Double.MAX_VALUE) return "";
 				return "Range: < "+max;
 			}
 			if(max == Double.MAX_VALUE) {
-				if(min == Double.MIN_VALUE) return "";
 				return "Range: > "+min;
 			}
 			return "Range: "+min+" ~ "+max;

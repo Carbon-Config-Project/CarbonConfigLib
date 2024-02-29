@@ -239,9 +239,9 @@ public final class ConfigHandler {
 			return 0;
 		}
 		int extra = 0;
-		if(entryData[2].length() > 0 && entryData[2].charAt(0) == '<') {
-			if(entryData[2].endsWith(">")) {
-				entryData[2] = entryData[2].substring(1, entryData[2].length()-1);
+		if(entryData[2].length() > 0 && entryData[2].startsWith("<<<")) {
+			if(entryData[2].endsWith(">>>")) {
+				entryData[2] = entryData[2].substring(3, entryData[2].length()-3);
 			} else {
 				StringBuilder builder = new StringBuilder();
 				extra += findString(entryData[2], lines, index, builder);
@@ -282,14 +282,14 @@ public final class ConfigHandler {
 	}
 	
 	private int findString(String base, List<String> lines, int index, StringBuilder builder) {
-		builder.append(base.substring(1));
+		builder.append(base.substring(3));
 		int stepsDone = 0;
 		while(index+1 < lines.size()) {
 			index++;
 			stepsDone++;
 			String data = lines.get(index).trim();
-			if(data.endsWith(">")) {
-				builder.append(data.substring(0, data.length()-1));
+			if(data.endsWith(">>>")) {
+				builder.append(data, 0, data.length()-3);
 				break;
 			}
 			else if(data.length() > 1 && data.charAt(1) == ':' && parsers.containsKey(data.charAt(0))) {
