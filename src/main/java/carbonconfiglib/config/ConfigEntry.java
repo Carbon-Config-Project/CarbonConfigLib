@@ -18,13 +18,13 @@ import carbonconfiglib.api.ISuggestionProvider.Suggestion;
 import carbonconfiglib.api.buffer.IReadBuffer;
 import carbonconfiglib.api.buffer.IWriteBuffer;
 import carbonconfiglib.utils.Helpers;
-import carbonconfiglib.utils.IEntryDataType;
-import carbonconfiglib.utils.IEntryDataType.CompoundDataType;
-import carbonconfiglib.utils.IEntryDataType.EntryDataType;
-import carbonconfiglib.utils.IEntryDataType.SimpleDataType;
 import carbonconfiglib.utils.MultilinePolicy;
 import carbonconfiglib.utils.ParseResult;
 import carbonconfiglib.utils.SyncType;
+import carbonconfiglib.utils.structure.IStructuredData;
+import carbonconfiglib.utils.structure.IStructuredData.EntryDataType;
+import carbonconfiglib.utils.structure.IStructuredData.SimpleData;
+import carbonconfiglib.utils.structure.StructureCompound.CompoundData;
 import speiger.src.collections.objects.lists.ObjectArrayList;
 import speiger.src.collections.objects.utils.ObjectLists;
 
@@ -124,7 +124,7 @@ public abstract class ConfigEntry<T> {
 		return key;
 	}
 	
-	public abstract IEntryDataType getDataType();
+	public abstract IStructuredData getDataType();
 	
 	public final <S extends ConfigEntry<T>> S addSingleSuggestion(Suggestion suggestion) {
 		return addSuggestionProvider(ISuggestionProvider.single(suggestion));
@@ -523,7 +523,7 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public SimpleDataType getDataType() {
+		public SimpleData getDataType() {
 			return EntryDataType.INTEGER.toSimpleType();
 		}
 		
@@ -605,7 +605,7 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public SimpleDataType getDataType() {
+		public SimpleData getDataType() {
 			return EntryDataType.DOUBLE.toSimpleType();
 		}
 		
@@ -671,7 +671,7 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public SimpleDataType getDataType() {
+		public SimpleData getDataType() {
 			return EntryDataType.BOOLEAN.toSimpleType();
 		}
 		
@@ -747,7 +747,7 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public SimpleDataType getDataType() {
+		public SimpleData getDataType() {
 			return EntryDataType.STRING.toSimpleType();
 		}
 		
@@ -822,7 +822,7 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public SimpleDataType getDataType() {
+		public SimpleData getDataType() {
 			return EntryDataType.STRING.toSimpleType();
 		}
 		
@@ -993,7 +993,7 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public IEntryDataType getDataType() {
+		public IStructuredData getDataType() {
 			return EntryDataType.ENUM.toSimpleType();
 		}
 
@@ -1059,7 +1059,7 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public SimpleDataType getDataType() {
+		public SimpleData getDataType() {
 			return EntryDataType.ENUM.toSimpleType();
 		}
 		
@@ -1118,7 +1118,7 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public CompoundDataType getDataType() {
+		public CompoundData getDataType() {
 			return serializer.getFormat();
 		}
 		
@@ -1145,7 +1145,7 @@ public abstract class ConfigEntry<T> {
 		
 		private String buildFormat() {
 			StringJoiner joiner = new StringJoiner(";");
-			for(Map.Entry<String, EntryDataType> entry : serializer.getFormat().getCompound()) {
+			for(Map.Entry<String, EntryDataType> entry : serializer.getFormat().asCompound()) {
 				EntryDataType type = entry.getValue();
 				if(entry.getValue() == EntryDataType.CUSTOM) {
 					EntryDataType displayType = serializer.getFormat().getDisplay(entry.getKey());
@@ -1193,7 +1193,7 @@ public abstract class ConfigEntry<T> {
 		@Override
 		public ParseResult<List<T>> parseValue(String value) {
 			List<T> result = new ObjectArrayList<>();
-			for(String s : Helpers.splitArray(value, ",")) {
+			for(String s : Helpers.splitCompoundArray(value)) {
 				ParseResult<T> entry = serializer.deserialize(Helpers.splitArray(s, ";"));
 				if(entry.isValid()) result.add(entry.getValue());
 			}
@@ -1261,7 +1261,7 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public IEntryDataType getDataType() {
+		public CompoundData getDataType() {
 			return serializer.getFormat();
 		}
 
@@ -1272,7 +1272,7 @@ public abstract class ConfigEntry<T> {
 
 		private String buildFormat() {
 			StringJoiner joiner = new StringJoiner(";");
-			for(Map.Entry<String, EntryDataType> entry : serializer.getFormat().getCompound()) {
+			for(Map.Entry<String, EntryDataType> entry : serializer.getFormat().asCompound()) {
 				EntryDataType type = entry.getValue();
 				if(entry.getValue() == EntryDataType.CUSTOM) {
 					EntryDataType displayType = serializer.getFormat().getDisplay(entry.getKey());

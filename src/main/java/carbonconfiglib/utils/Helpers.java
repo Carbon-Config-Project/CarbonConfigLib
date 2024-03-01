@@ -4,7 +4,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 import java.util.StringJoiner;
+
+import speiger.src.collections.objects.lists.ObjectArrayList;
+import speiger.src.collections.objects.maps.interfaces.Object2ObjectMap;
+import speiger.src.collections.objects.sets.ObjectOpenHashSet;
 
 /**
  * Copyright 2023 Speiger, Meduris
@@ -66,14 +74,78 @@ public class Helpers {
 	public static String[] splitArray(String value, String splitter) {
 		return value.isEmpty() ? EMPTY : trimArray(value.split(splitter));
 	}
-
+	
+	public static String[] splitCompound(String value) {
+		if(value.isEmpty()) return EMPTY;
+		boolean starts = value.startsWith("[");
+		boolean ends = value.endsWith("]");
+		return scanForElements(value.subSequence(starts ? 1 : 0, value.length() - (ends ? 2 : 1)), ';', '[', ']'); 
+	}
+	
+	public static Map<String, String> splitArguments(String[] entries, List<String> keys) {
+		Map<String, String> namedArguments = Object2ObjectMap.builder().linkedMap();
+		Set<String> comparator = new ObjectOpenHashSet<>(keys);
+		for(int i = 0,m=entries.length;i<m;i++) {
+			String[] entry = entries[i].split(":", 2);
+			if(entry.length == 1 || !comparator.contains(entry[0])) {
+				namedArguments.put(keys.get(i), entries[i]);
+				continue;
+			}
+			namedArguments.put(entry[0], entry[1]);
+		}
+		return namedArguments;
+	}
+	
+	public static String[] splitCompoundArray(String value) {
+		return scanForElements(value, ',', '[', ']');
+	}
+	
+	public static String[] scanForElements(CharSequence text, char splitter, char opener, char closer) {
+		List<String> result = new ObjectArrayList<>();
+		StringBuilder builder = new StringBuilder(text.length());
+		int recursion = 0;
+		for(int i = 0,m=text.length();i<m;i++) {
+			char value = text.charAt(i);
+			if(value == opener) recursion++;
+			else if(value == closer) recursion--;
+			else if(value == splitter && recursion == 0) {
+				result.add(builder.toString());
+				builder.setLength(0);
+				continue;
+			}
+			builder.append(value);
+		}
+		if(builder.length() > 0) result.add(builder.toString());
+		
+		return trimArray(result.toArray(String[]::new));
+	}
+	
+	public static String mergeCompound(Map<String, String> entries, boolean newLine) {
+		String lineBreak = newLine ? "\n" : "";
+		StringBuilder builder = new StringBuilder("[").append(lineBreak);
+		String indent = newLine ? generateIndent(1) : " ";
+		for(Entry<String, String> entry : entries.entrySet()) {
+			builder.append(indent).append(entry.getKey()).append(": ").append(entry.getValue()).append(";").append(lineBreak);
+		}
+		return builder.append("]").toString();
+	}
+	
+	public static String mergeCompoundArray(List<String> list, boolean newLine) {
+		StringJoiner joiner = new StringJoiner(newLine ? ",\n" : ", ");
+		String indent = newLine ? generateIndent(1) : " ";
+		for(int i = 0,m=list.size();i<m;i++) {
+			joiner.add(indent+list.get(i));
+		}
+		return joiner.toString();
+	}
+	
 	public static String[] trimArray(String[] array) {
 		for (int i = 0, m = array.length; i < m; i++) {
 			array[i] = array[i].trim();
 		}
 		return array;
 	}
-
+	
 	public static String mergeCompound(String[] array) {
 		StringJoiner joiner = new StringJoiner(";");
 		for (String s : array) {
@@ -88,6 +160,15 @@ public class Helpers {
 
 	public static double clamp(double value, double min, double max) {
 		return Math.min(Math.max(value, min), max);
+	}
+	
+	public static ParseResult<String> parseString(String value) {
+		return ParseResult.success(value);
+	}
+	
+	public static ParseResult<Boolean> parseBoolean(String value) {
+		try { return ParseResult.success(Boolean.parseBoolean(value)); }
+		catch (Exception e) { return ParseResult.error(value, e, "Couldn't parse Boolean"); }
 	}
 	
 	public static ParseResult<Integer> parseInt(String value) {

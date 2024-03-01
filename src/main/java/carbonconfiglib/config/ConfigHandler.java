@@ -239,12 +239,21 @@ public final class ConfigHandler {
 			return 0;
 		}
 		int extra = 0;
-		if(entryData[2].length() > 0 && entryData[2].startsWith("<<<")) {
+		if(entryData[2].startsWith("<<<")) {
 			if(entryData[2].endsWith(">>>")) {
 				entryData[2] = entryData[2].substring(3, entryData[2].length()-3);
 			} else {
 				StringBuilder builder = new StringBuilder();
-				extra += findString(entryData[2], lines, index, builder);
+				extra += findString(entryData[2], lines, index, ">>>", builder);
+				entryData[2] = builder.toString();
+			}
+		}
+		else if(entryData[2].startsWith("<")) { //Legacy Support
+			if(entryData[2].endsWith(">")) {
+				entryData[2] = entryData[2].substring(1, entryData[2].length()-1);
+			} else {
+				StringBuilder builder = new StringBuilder();
+				extra += findString(entryData[2], lines, index, ">", builder);
 				entryData[2] = builder.toString();
 			}
 		}
@@ -281,15 +290,15 @@ public final class ConfigHandler {
 		return extra;
 	}
 	
-	private int findString(String base, List<String> lines, int index, StringBuilder builder) {
-		builder.append(base.substring(3));
+	private int findString(String base, List<String> lines, int index, String ending, StringBuilder builder) {
+		builder.append(base.substring(ending.length()));
 		int stepsDone = 0;
 		while(index+1 < lines.size()) {
 			index++;
 			stepsDone++;
 			String data = lines.get(index).trim();
-			if(data.endsWith(">>>")) {
-				builder.append(data, 0, data.length()-3);
+			if(data.endsWith(ending)) {
+				builder.append(data, 0, data.length()-ending.length());
 				break;
 			}
 			else if(data.length() > 1 && data.charAt(1) == ':' && parsers.containsKey(data.charAt(0))) {
