@@ -77,9 +77,7 @@ public class Helpers {
 	
 	public static String[] splitCompound(String value) {
 		if(value.isEmpty()) return EMPTY;
-		boolean starts = value.startsWith("[");
-		boolean ends = value.endsWith("]");
-		return scanForElements(value.subSequence(starts ? 1 : 0, value.length() - (ends ? 2 : 1)), ';', '[', ']'); 
+		return scanForElements(removeLayer(value, 1), ';', '[', ']'); 
 	}
 	
 	public static Map<String, String> splitArguments(String[] entries, List<String> keys) {
@@ -88,12 +86,18 @@ public class Helpers {
 		for(int i = 0,m=entries.length;i<m;i++) {
 			String[] entry = entries[i].split(":", 2);
 			if(entry.length == 1 || !comparator.contains(entry[0])) {
-				namedArguments.put(keys.get(i), entries[i]);
+				namedArguments.put(keys.get(i), entries[i].trim());
 				continue;
 			}
-			namedArguments.put(entry[0], entry[1]);
+			namedArguments.put(entry[0], entry[1].trim());
 		}
 		return namedArguments;
+	}
+	
+	public static String removeLayer(String value, int base) {
+		boolean starts = value.startsWith("[");
+		boolean ends = value.endsWith("]");
+		return value.substring(starts ? 1 : 0, value.length() - ((ends ? 1 : 0) + base)); 
 	}
 	
 	public static String[] splitCompoundArray(String value) {
@@ -120,19 +124,20 @@ public class Helpers {
 		return trimArray(result.toArray(String[]::new));
 	}
 	
-	public static String mergeCompound(Map<String, String> entries, boolean newLine) {
+	public static String mergeCompound(Map<String, String> entries, boolean newLine, int indentLevel) {
 		String lineBreak = newLine ? "\n" : "";
 		StringBuilder builder = new StringBuilder("[").append(lineBreak);
-		String indent = newLine ? generateIndent(1) : " ";
+		String indent = newLine ? generateIndent(indentLevel+1) : "";
 		for(Entry<String, String> entry : entries.entrySet()) {
-			builder.append(indent).append(entry.getKey()).append(": ").append(entry.getValue()).append(";").append(lineBreak);
+			builder.append(indent).append(entry.getKey()).append(": ").append(entry.getValue()).append("; ").append(lineBreak);
 		}
+		if(builder.charAt(builder.length()-1) == ' ') builder.deleteCharAt(builder.length()-1);
 		return builder.append("]").toString();
 	}
 	
-	public static String mergeCompoundArray(List<String> list, boolean newLine) {
-		StringJoiner joiner = new StringJoiner(newLine ? ",\n" : ", ");
-		String indent = newLine ? generateIndent(1) : " ";
+	public static String mergeCompoundArray(List<String> list, boolean newLine, int indentLevel) {
+		String indent = newLine ? generateIndent(indentLevel+1) : "";
+		StringJoiner joiner = new StringJoiner(newLine ? ",\n" : ", ", "["+(newLine ? "\n" : ""), (newLine ? "\n"+generateIndent(indentLevel) : "")+"]");
 		for(int i = 0,m=list.size();i<m;i++) {
 			joiner.add(indent+list.get(i));
 		}
@@ -144,14 +149,6 @@ public class Helpers {
 			array[i] = array[i].trim();
 		}
 		return array;
-	}
-	
-	public static String mergeCompound(String[] array) {
-		StringJoiner joiner = new StringJoiner(";");
-		for (String s : array) {
-			joiner.add(s);
-		}
-		return joiner.toString();
 	}
 
 	public static int clamp(int value, int min, int max) {

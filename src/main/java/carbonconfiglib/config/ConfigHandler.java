@@ -279,13 +279,14 @@ public final class ConfigHandler {
 				ParseResult<String> result = entry.deserializeValue(entryData[2]);
 				if(result.hasError() && logErrors) {
 					logger.warn("couldn't parse value: {}", result.getValue());
+					logger.warn("Parsing Error: {}", result.getError().getMessage());
 					errors.add(new ConfigError(entry, result.getError()));
 				}
 			}
 			else logger.warn("config entry has wrong type: {}", line);
 		}
 		catch(Throwable e) {
-			logger.error("Crash during parsing. THIS SHOULD NEVER HAPPEN!", e);
+			logger.error("Crash during parsing. THIS SHOULD NEVER HAPPEN! {}", e);
 		}
 		return extra;
 	}

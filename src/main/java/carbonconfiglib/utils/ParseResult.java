@@ -51,6 +51,10 @@ public class ParseResult<T> {
 		return new ParseResult<>(value, error);
 	}
 	
+	public static <T> ParseResult<T> error(Function<String, Exception> e, String message) {
+		return new ParseResult<T>(null, new ParseExpection(null, e.apply(message), message));
+	}
+	
 	public static <T> ParseResult<T> error(String value, Exception excpetion) {
 		return new ParseResult<>(null, new ParseExpection(value, excpetion, null));
 	}
@@ -89,6 +93,14 @@ public class ParseResult<T> {
 	
 	public <S> ParseResult<S> onlyError(String extraComment) {
 		return new ParseResult<>(null, error.appendMessage(extraComment));
+	}
+	
+	public <S> ParseResult<S> validateType(Class<S> type) {
+		return type.isInstance(value) ? new ParseResult<S>(type.cast(value), error) : onlyError("["+Objects.toString(value)+"] doesn't match type ["+type.getSimpleName()+"]");
+	}
+	
+	public <S> ParseResult<S> validateType(Class<S> type, String extraComment) {
+		return type.isInstance(value) ? new ParseResult<S>(type.cast(value), error) : onlyError("["+Objects.toString(value)+"] doesn't match type ["+type.getSimpleName()+"]\n"+extraComment);
 	}
 	
 	public <S> ParseResult<S> withDefault(S value) {

@@ -4,7 +4,6 @@ import java.lang.reflect.Array;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.StringJoiner;
 import java.util.UUID;
@@ -309,7 +308,7 @@ public abstract class ConfigEntry<T> {
 			if(builder.length() == 0) builder.append("\n");
 			builder.append(indentation);
 			builder.append("#").append('\u200b').append(" ");
-			builder.append(limits);
+			builder.append(limits.replaceAll("\\R", indentation + "#\u200b "));
 		}
 		builder.append(indentation);
 		builder.append(getPrefix());
@@ -317,7 +316,7 @@ public abstract class ConfigEntry<T> {
 		builder.append(key);
 		builder.append('=');
 		String line = serializedValue(policy, value);
-		if(policy != MultilinePolicy.DISABLED && this instanceof IArrayConfig && line.contains("\n")) {
+		if(policy != MultilinePolicy.DISABLED && line.contains("\n")) {
 			String indent = "\n"+Helpers.generateIndent(indentationLevel+1);
 			builder.append("<<<").append(indent).append(line.replaceAll("\\R", indent));
 			builder.append(indentation).append(">>>");
@@ -338,13 +337,6 @@ public abstract class ConfigEntry<T> {
 	}
 	
 	protected abstract void deserializeValue(IReadBuffer buffer);
-	
-	public static interface IArrayConfig {
-		public List<String> getEntries();
-		public List<String> getDefaults();
-		public ParseResult<Boolean> canSetArray(List<String> entries);
-		public void setArray(List<String> entries);
-	}
 	
 	public static abstract class BasicConfigEntry<T> extends ConfigEntry<T> {
 		
@@ -421,7 +413,7 @@ public abstract class ConfigEntry<T> {
 		}
 	}
 	
-	public static abstract class CollectionConfigEntry<T, E extends Collection<T>> extends ConfigEntry<E> implements IArrayConfig {
+	public static abstract class CollectionConfigEntry<T, E extends Collection<T>> extends ConfigEntry<E> {
 		
 		public CollectionConfigEntry(String key, E defaultValue, String... comment) {
 			super(key, defaultValue, comment);
@@ -787,7 +779,7 @@ public abstract class ConfigEntry<T> {
 		}
 	}
 	
-	public static class ArrayValue extends ArrayConfigEntry<String> implements IArrayConfig {
+	public static class ArrayValue extends ArrayConfigEntry<String> {
 		protected Predicate<String> filter;
 
 		public ArrayValue(String key, String[] defaultValue, String... comment) {
@@ -833,33 +825,6 @@ public abstract class ConfigEntry<T> {
 		@Override
 		public String getLimitations() {
 			return "";
-		}
-		
-		@Override
-		public List<String> getEntries() {
-			return new ObjectArrayList<>(getValue());
-		}
-		
-		@Override
-		public List<String> getDefaults() {
-			return ObjectArrayList.wrap(getDefault());
-		}
-		
-		@Override
-		public ParseResult<Boolean> canSetArray(List<String> entries) {
-			if(entries == null) return ParseResult.partial(false, NullPointerException::new, "Value isn't allowed to be null");
-			if(filter != null) {
-				for(int i = 0;i<entries.size();i++) {
-					if(filter.test(entries.get(i))) continue;
-					return ParseResult.partial(false, IllegalArgumentException::new, "Value ["+entries.get(i)+"] isn't valid");
-				}
-			}
-			return ParseResult.success(true);
-		}
-		
-		@Override
-		public void setArray(List<String> entries) {
-			set(entries.toArray(new String[entries.size()]));
 		}
 		
 		@Override
@@ -932,43 +897,6 @@ public abstract class ConfigEntry<T> {
 				result[i] = value.get(i).name();
 			}
 			return serializeArray(policy, result);
-		}
-		
-		@Override
-		public List<String> getEntries() {
-			List<String> values = new ObjectArrayList<>();
-			for(E value : getValue()) {
-				values.add(value.name());
-			}
-			return values;
-		}
-
-		@Override
-		public List<String> getDefaults() {
-			List<String> values = new ObjectArrayList<>();
-			for(E value : getDefault()) {
-				values.add(value.name());
-			}
-			return values;
-		}
-		
-		@Override
-		public ParseResult<Boolean> canSetArray(List<String> entries) {
-			if(entries == null) return ParseResult.partial(false, NullPointerException::new, "Value isn't allowed to be null");
-			for(int i = 0,m=entries.size();i<m;i++) {
-				ParseResult<E> result = Helpers.parseEnum(enumClass, entries.get(i));
-				if(result.hasError()) return result.onlyError("Value must be one of the following: "+Arrays.toString(Helpers.toArray(enumClass)));
-			}
-			return ParseResult.success(true);
-		}
-		
-		@Override
-		public void setArray(List<String> entries) {
-			StringJoiner joiner = new StringJoiner(",");
-			for(String s : entries) {
-				joiner.add(s);
-			}
-			deserializeValue(joiner.toString());
 		}
 
 		@Override
@@ -1135,30 +1063,23 @@ public abstract class ConfigEntry<T> {
 		
 		@Override
 		public ParseResult<T> parseValue(String value) {
-			return serializer.deserialize(Helpers.splitArray(value, ";"));
+			return serializer.deserialize(serializer.getFormat().parse(value));
 		}
 		
 		@Override
 		protected String serializedValue(MultilinePolicy policy, T value) {
-			return Helpers.mergeCompound(serializer.serialize(value));
+			return serializer.getFormat().serialize(serializer.serialize(value), policy != MultilinePolicy.DISABLED);
 		}
 		
 		private String buildFormat() {
-			StringJoiner joiner = new StringJoiner(";");
-			for(Map.Entry<String, EntryDataType> entry : serializer.getFormat().asCompound()) {
-				EntryDataType type = entry.getValue();
-				if(entry.getValue() == EntryDataType.CUSTOM) {
-					EntryDataType displayType = serializer.getFormat().getDisplay(entry.getKey());
-					if(displayType != null) type = displayType;
-				}
-				joiner.add(entry.getKey()+"("+Helpers.firstLetterUppercase(type.name().toLowerCase())+")");
-			}
-			return joiner.toString();
+			StringBuilder builder = new StringBuilder();
+			serializer.getFormat().appendFormat(builder, true);
+			return builder.toString();
 		}
 		
 		@Override
 		public String getLimitations() {
-			return "Format: ["+buildFormat()+"], Example: ["+serializedValue(MultilinePolicy.DISABLED, serializer.getExample())+"]";
+			return "Format: ["+buildFormat()+"],\nExample: "+serializedValue(MultilinePolicy.DISABLED, serializer.getExample());
 		}
 		
 		@Override
@@ -1194,7 +1115,7 @@ public abstract class ConfigEntry<T> {
 		public ParseResult<List<T>> parseValue(String value) {
 			List<T> result = new ObjectArrayList<>();
 			for(String s : Helpers.splitCompoundArray(value)) {
-				ParseResult<T> entry = serializer.deserialize(Helpers.splitArray(s, ";"));
+				ParseResult<T> entry = serializer.deserialize(serializer.getFormat().parse(s));
 				if(entry.isValid()) result.add(entry.getValue());
 			}
 			return ParseResult.success(result);
@@ -1204,7 +1125,7 @@ public abstract class ConfigEntry<T> {
 		protected String serializedValue(MultilinePolicy policy, List<T> value) {
 			String[] result = new String[value.size()];
 			for(int i = 0,m=value.size();i<m;i++) {
-				result[i] = Helpers.mergeCompound(serializer.serialize(value.get(i)));
+				result[i] = serializer.getFormat().serialize(serializer.serialize(value.get(i)), policy != MultilinePolicy.DISABLED);
 			}
 			return serializeArray(policy, result);
 		}
@@ -1222,45 +1143,6 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public List<String> getEntries() {
-			List<String> output = new ObjectArrayList<>();
-			for(T entry : getValue()) {
-				output.add(Helpers.mergeCompound(this.serializer.serialize(entry)));
-			}
-			return output;
-		}
-
-		@Override
-		public List<String> getDefaults() {
-			List<String> output = new ObjectArrayList<>();
-			for(T entry : getDefault()) {
-				output.add(Helpers.mergeCompound(this.serializer.serialize(entry)));
-			}
-			return output;
-		}
-
-		@Override
-		public ParseResult<Boolean> canSetArray(List<String> entries) {
-			if(entries == null) return ParseResult.partial(false, NullPointerException::new, "Value isn't allowed to be null");
-			for(int i = 0,m=entries.size();i<m;i++) {
-				ParseResult<T> result = serializer.deserialize(Helpers.splitArray(entries.get(i), ";"));
-				if(result.hasError()) return result.withDefault(false);
-				ParseResult<Boolean> valid = serializer.isValid(result.getValue());
-				if(valid.hasError()) return valid;
-			}
-			return ParseResult.success(true);
-		}
-
-		@Override
-		public void setArray(List<String> entries) {
-			StringJoiner joiner = new StringJoiner(",");
-			for(String s : entries) {
-				joiner.add(s);
-			}
-			deserializeValue(joiner.toString());
-		}
-		
-		@Override
 		public CompoundData getDataType() {
 			return serializer.getFormat();
 		}
@@ -1271,21 +1153,14 @@ public abstract class ConfigEntry<T> {
 		}
 
 		private String buildFormat() {
-			StringJoiner joiner = new StringJoiner(";");
-			for(Map.Entry<String, EntryDataType> entry : serializer.getFormat().asCompound()) {
-				EntryDataType type = entry.getValue();
-				if(entry.getValue() == EntryDataType.CUSTOM) {
-					EntryDataType displayType = serializer.getFormat().getDisplay(entry.getKey());
-					if(displayType != null) type = displayType;
-				}
-				joiner.add(entry.getKey()+"("+Helpers.firstLetterUppercase(type.name().toLowerCase())+")");
-			}
-			return joiner.toString();
+			StringBuilder builder = new StringBuilder();
+			serializer.getFormat().appendFormat(builder, true);
+			return builder.toString();
 		}
 		
 		@Override
 		public String getLimitations() {
-			return "Format: ["+buildFormat()+"], Example: ["+serializedValue(MultilinePolicy.DISABLED, ObjectLists.singleton(serializer.getExample()))+"]";
+			return "Format: ["+buildFormat()+"],\nExample: "+serializedValue(MultilinePolicy.DISABLED, ObjectLists.singleton(serializer.getExample()));
 		}
 
 		@Override

@@ -10,7 +10,8 @@ public class SystemLogger implements ILogger
 	
 	@Override
 	public void debug(String s, Object o) {
-		System.out.println("[Debug] "+String.format(s, o));
+		System.out.println("[Debug] "+String.format(s.replace("{}", "%s"), o));
+		if(o instanceof Throwable) ((Throwable)o).printStackTrace(System.out);
 	}
 	
 	@Override
@@ -25,7 +26,8 @@ public class SystemLogger implements ILogger
 	
 	@Override
 	public void info(String s, Object o) {	
-		System.out.println("[Info] "+String.format(s, o));
+		System.out.println("[Info] "+String.format(s.replace("{}", "%s"), o));
+		if(o instanceof Throwable) ((Throwable)o).printStackTrace(System.out);
 	}
 	
 	@Override
@@ -40,7 +42,8 @@ public class SystemLogger implements ILogger
 	
 	@Override
 	public void warn(String s, Object o) {
-		System.out.println("[Warn] "+String.format(s, o));		
+		System.out.println("[Warn] "+String.format(s.replace("{}", "%s"), o));		
+		if(o instanceof Throwable) ((Throwable)o).printStackTrace(System.out);
 	}
 	
 	@Override
@@ -55,7 +58,8 @@ public class SystemLogger implements ILogger
 	
 	@Override
 	public void error(String s, Object o) {
-		System.err.println("[Error] "+String.format(s, o));
+		System.err.println("[Error] "+String.format(s.replace("{}", "%s"), o));
+		if(o instanceof Throwable) ((Throwable)o).printStackTrace(System.err);
 	}
 	
 	@Override

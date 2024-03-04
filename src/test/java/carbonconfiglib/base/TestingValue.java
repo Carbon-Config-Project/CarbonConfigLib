@@ -1,7 +1,15 @@
 package carbonconfiglib.base;
 
-import carbonconfiglib.utils.Helpers;
+import java.util.List;
+
+import carbonconfiglib.api.IConfigSerializer;
 import carbonconfiglib.utils.ParseResult;
+import carbonconfiglib.utils.ParsedCollections.ParsedList;
+import carbonconfiglib.utils.ParsedCollections.ParsedMap;
+import carbonconfiglib.utils.structure.IStructuredData.EntryDataType;
+import carbonconfiglib.utils.structure.StructureCompound.CompoundBuilder;
+import carbonconfiglib.utils.structure.StructureList.ListBuilder;
+import speiger.src.collections.objects.lists.ObjectArrayList;
 
 /**
  * Copyright 2023 Speiger, Meduris
@@ -22,28 +30,48 @@ public class TestingValue {
 	String name;
 	int year;
 	double fluffyness;
+	List<String> list;
 	
 	public TestingValue() {
-		this("Testing", 2000, 512.2423);
+		this("Testing", 2000, 512.2423, ObjectArrayList.wrap("One", "Two", "Three", "Four"));
 	}
 	
-	public TestingValue(String name, int year, double fluffyness) {
+	public TestingValue(String name, int year, double fluffyness, List<String> list) {
 		this.name = name;
 		this.year = year;
 		this.fluffyness = fluffyness;
+		this.list = list;
 	}
 	
-	public static ParseResult<TestingValue> parse(String[] value) {
-		if(value.length != 3) return ParseResult.error(Helpers.mergeCompound(value), "3 Elements are required");
-		if(value[0] == null || value[0].trim().isEmpty()) return ParseResult.error(value[0], "Value [Name] is not allowed to be null/empty");
-		ParseResult<Integer> year = Helpers.parseInt(value[1]);
-		if(year.hasError()) return year.onlyError("Couldn't parse [Year] argument");
-		ParseResult<Double> fluffyness = Helpers.parseDouble(value[2]);
-		if(fluffyness.hasError()) return fluffyness.onlyError("Couldn't parse [Fluffyness] argument");
-		return ParseResult.success(new TestingValue(value[0], year.getValue(), fluffyness.getValue()));
+	public static IConfigSerializer<TestingValue> createSerializer() {
+		CompoundBuilder builder = new CompoundBuilder().setNewLined(true);
+		builder.simple("Name", EntryDataType.STRING).finish();
+		builder.simple("Year", EntryDataType.INTEGER).finish();
+		builder.simple("Fluffyness", EntryDataType.DOUBLE).finish();
+		builder.nested("Counter", ListBuilder.of(EntryDataType.STRING).build(false)).finish();
+		return IConfigSerializer.noSync(builder.build(), new TestingValue(), TestingValue::parseNew, TestingValue::serializeNew);
 	}
 	
-	public String[] serialize() {
-		return new String[] {name, Integer.toString(year), Double.toString(fluffyness)};
+	public static ParseResult<TestingValue> parseNew(ParsedMap map) {
+		ParseResult<String> name = map.getOrError("Name", String.class, "Variable [Name] couldn't be Parsed");
+		if(name.hasError()) return name.onlyError();
+		ParseResult<Integer> year = map.getOrError("Year", Integer.class, "Variable [Year] couldn't be Parsed");
+		if(year.hasError()) return year.onlyError();
+		ParseResult<Double> fluff = map.getOrError("Fluffyness", Double.class, "Variable [Fluffyness] couldn't be Parsed");
+		if(fluff.hasError()) return fluff.onlyError();
+		ParseResult<ParsedList> list = map.getOrError("Counter", ParsedList.class, "Variable [Counter] couldn't be Parsed");
+		if(list.hasError()) return list.onlyError();
+		return ParseResult.success(new TestingValue(name.getValue(), year.getValue(), fluff.getValue(), list.getValue().collect(String.class, new ObjectArrayList<>())));
+	}
+	
+	public ParsedMap serializeNew() {
+		ParsedMap map = new ParsedMap();
+		map.put("Name", name);
+		map.put("Year", year);
+		map.put("Fluffyness", fluffyness);
+		ParsedList list = new ParsedList();
+		this.list.forEach(list::add);
+		map.put("Counter", list);
+		return map;
 	}
 }

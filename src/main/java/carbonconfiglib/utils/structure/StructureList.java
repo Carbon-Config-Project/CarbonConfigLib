@@ -30,14 +30,28 @@ public class StructureList
 		
 		public ParsedList parse(String data) {
 			ParsedList list = new ParsedList();
-			type.parse(ObjectArrayList.wrap(Helpers.splitCompoundArray(data)), list);
+			type.parse(ObjectArrayList.wrap(Helpers.splitCompoundArray(Helpers.removeLayer(data.trim(), 0))), list);
 			return list;
 		}
 		
-		public String serialize(ParsedList data) {
+		public String serialize(ParsedList data, boolean allowMultine) {
+			return serialize(data, allowMultine, 0);
+		}
+		
+		public String serialize(ParsedList data, boolean allowMultine, int indent) {
 			List<String> output = new ObjectArrayList<>();
-			type.serialize(data, output);
-			return Helpers.mergeCompoundArray(output, isNewLined);
+			type.serialize(data, output, allowMultine, indent+1);
+			return Helpers.mergeCompoundArray(output, isNewLined && allowMultine, indent);
+		}
+		
+		public IStructuredData getFormat() {
+			return type.getType();
+		}
+		
+		@Override
+		public void appendFormat(StringBuilder builder, boolean start) {
+			type.getType().appendFormat(builder.append("List("), false);
+			builder.append(")");
 		}
 	}
 	
@@ -69,7 +83,7 @@ public class StructureList
 		
 		public static ListBuilder of(EntryDataType type) { return new ListBuilder(ListEntry.create(type)); }
 		public static <T extends Enum<T>> ListBuilder enums(Class<T> clz) { return new ListBuilder(new ListEntry<>(EntryDataType.ENUM.toSimpleType(), E -> Helpers.parseEnum(clz, E), Enum::name)).addSuggestions(ISuggestionProvider.enums(clz)); }
-		public static <T> ListBuilder variants(Class<T> type, Function<String, ParseResult<T>> parse, Function<T, String> serialize) { return new ListBuilder(new ListEntry<>(SimpleData.variant(type), parse, serialize)); }
+		public static <T> ListBuilder variants(EntryDataType displayType, Class<T> type, Function<String, ParseResult<T>> parse, Function<T, String> serialize) { return new ListBuilder(new ListEntry<>(SimpleData.variant(displayType, type), parse, serialize)); }
 		public static ListBuilder variants(IStructuredData type) {
 			if(type instanceof ListData) return new ListBuilder(new ListWrapper((ListData)type));
 			else if(type instanceof CompoundData) return new ListBuilder(new CompoundWrapper((CompoundData)type));
@@ -81,7 +95,7 @@ public class StructureList
 		public IStructuredData getType();
 		public boolean isForced();
 		public void parse(List<String> input, ParsedList output);
-		public void serialize(ParsedList input, List<String> output);
+		public void serialize(ParsedList input, List<String> output, boolean allowMultine, int indent);
 		public ObjectList<ISuggestionProvider> getSuggestions();
 	}
 	
@@ -109,9 +123,9 @@ public class StructureList
 		}
 		
 		@Override
-		public void serialize(ParsedList input, List<String> output) {
+		public void serialize(ParsedList input, List<String> output, boolean allowMultine, int indent) {
 			for(int i = 0,m=input.size();i<m;i++) {
-				output.add(data.serialize(input.get(i, ParsedMap.class)));
+				output.add(data.serialize(input.get(i, ParsedMap.class), allowMultine, indent));
 			}
 		}
 
@@ -137,14 +151,14 @@ public class StructureList
 		@Override
 		public void parse(List<String> input, ParsedList output) {
 			for(int i = 0,m=input.size();i<m;i++) {
-				output.add(data.parse(input.get(i)));
+				output.add(ParsedList.unwrap(data.parse(input.get(i))));
 			}
 		}
 		
 		@Override
-		public void serialize(ParsedList input, List<String> output) {
+		public void serialize(ParsedList input, List<String> output, boolean allowMultine, int indent) {
 			for(int i = 0,m=input.size();i<m;i++) {
-				output.add(data.serialize(input.get(i, ParsedList.class)));
+				output.add(data.serialize(input.get(i, ParsedList.class), allowMultine, indent));
 			}
 		}
 
@@ -178,12 +192,12 @@ public class StructureList
 		@Override
 		public void parse(List<String> input, ParsedList output) {
 			for(int i = 0,m=input.size();i<m;i++) {
-				output.add(parse.apply(input.get(i)));
+				output.add(parse.apply(input.get(i)).getValue());
 			}
 		}
 		
 		@Override
-		public void serialize(ParsedList input, List<String> output) {
+		public void serialize(ParsedList input, List<String> output, boolean allowMultine, int indent) {
 			for(int i = 0,m=input.size();i<m;i++) {
 				output.add(serialize.apply(input.getUnsafe(i)));
 			}
