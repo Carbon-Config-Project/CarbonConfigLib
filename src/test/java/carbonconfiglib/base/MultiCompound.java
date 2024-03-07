@@ -2,8 +2,7 @@ package carbonconfiglib.base;
 
 import java.util.List;
 import java.util.Map;
-
-import com.google.common.base.Objects;
+import java.util.Objects;
 
 import carbonconfiglib.api.IConfigSerializer;
 import carbonconfiglib.utils.ParseResult;
@@ -14,6 +13,22 @@ import carbonconfiglib.utils.structure.StructureCompound.CompoundBuilder;
 import carbonconfiglib.utils.structure.StructureList.ListBuilder;
 import speiger.src.collections.objects.lists.ObjectArrayList;
 import speiger.src.collections.objects.maps.impl.hash.Object2ObjectLinkedOpenHashMap;
+
+/**
+ * Copyright 2024 Speiger, Meduris
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ * https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 public class MultiCompound
 {
@@ -36,7 +51,7 @@ public class MultiCompound
 	public boolean equals(Object obj) {
 		if(obj instanceof MultiCompound) {
 			MultiCompound other = (MultiCompound)obj;
-			return other.main == main && other.count == count && Objects.equal(other.maps, maps);
+			return other.main == main && other.count == count && Objects.equals(other.maps, maps);
 		}
 		return false;
 	}

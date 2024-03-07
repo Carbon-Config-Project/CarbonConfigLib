@@ -254,27 +254,7 @@ And the Config itself manages everything in between.
 public static ParsedValue<TestingValue> PARSED;
 
 		public static void main(String...args) {
-			/**
-			 * Creating the Spec.
-			 * Which has to be the order it is parsed in.
-			 * Valid dataTypes are: Boolean, Integer, Double, String, Custom
-			 * Custom can be for example a "Color" which is a Integer in the background but still should be maybe treated differently in the gui then in the text config.
-			 */
-			CompoundDataType type = new CompoundDataType().with("Name", EntryDataType.STRING).with("Year", EntryDataType.INTEGER).with("Fluffyness", EntryDataType.DOUBLE);
-			
-			/**
-			 * Creating the Serializer.
-			 * Which requires a Spect, a Example value, The parse function, which is a function that is expected to never throw exceptions, and the serialize function.
-			 * Optionally if Sync should be supported a Network Buffer write/read function should be provided.
-			 * Serializer can be shared and do not have to be created between config instances.
-			 * A default value has to be provided because the Spec with a Example is automatically generated with the config description so this doesn't have to be done by default.
-			 */
-			IConfigSerializer serializer = IConfigSerializer.noSync(type, new TestingValue(), TestingValue::parse, TestingValue::serialize);
-			
-			/**
-			 * Creating the Config.
-			 */
-			PARSED = section.addParsed("ParseTest", new TestingValue(), serializer);
+			PARSED = section.addParsed("ParseTest", new TestingValue(), TestingValue.createSerializer());
 		}
 		
 		public class TestingValue {
@@ -293,29 +273,72 @@ public static ParsedValue<TestingValue> PARSED;
 			}
 			
 			/**
-			 * The Parsing function, that creates out of a String array the Value that is desired.
-			 * Instead of Throwing Exceptions the idea here is that the Parse Result is returned with a Error.
-			 * Said errors should have a description what wen't wrong or if a exception during parsing was thrown, for example number parsing, then the exception is put into the parse result itself.
-			 * Helper functions like error only are there to simply redirect the errors further up the chain.
-			 * Extra information can be optionally included if so desired.
-			 * Also another helper function: "withDefault" can be used that just replaces the return value instead that can be used later on.
-			 * Not specifically with "ParsedValues" but with custom Config Entries.
+			 * Function that creates the serializer.
+			 * The Compound Builder is used to build your data structure layout. 
+			 * Where you can define if it should be compact or spread out, with the setNewLined function.
+			 * A entry can be started with the "simple/variant/enum/nested" function.
+			 * After that optionally a "addSuggestion" or "setComments" or "forceSuggestions" can be used to expand on information for each.
+			 * Though these are mainly for GUI implementations specifically.
+			 * And then a "finish" function must be used to complete an entry.
+			 * 
+			 * The nested starter is used for allowing to append custom data structures such as other compounds or list. 
+			 * (Recursion is needed)
+			 *
+			 * Then a Example value and a Parse/Serialize function is required to complete things.
+			 * There can be an optional Validator provided which double checks the values themselves and return information what went wrong. 
 			 */
-			public static ParseResult<TestingValue> parse(String[] value) {
-				if(value.length != 3) return ParseResult.error(Helpers.mergeCompound(value), "3 Elements are required");
-				if(value[0] == null || value[0].trim().isEmpty()) return ParseResult.error(value[0], "Value [Name] is not allowed to be null/empty");
-				ParseResult<Integer> year = Helpers.parseInt(value[1]);
-				if(year.hasError()) return year.onlyError("Couldn't parse [Year] argument");
-				ParseResult<Double> fluffyness = Helpers.parseDouble(value[2]);
-				if(fluffyness.hasError()) return fluffyness.onlyError("Couldn't parse [Fluffyness] argument");
-				return ParseResult.success(new TestingValue(value[0], year.getValue(), fluffyness.getValue()));
+			public static IConfigSerializer<TestingValue> createSerializer() {
+				CompoundBuilder builder = new CompoundBuilder().setNewLined(true);
+				builder.simple("Name", EntryDataType.STRING).finish();
+				builder.simple("Year", EntryDataType.INTEGER).finish();
+				builder.simple("Fluffyness", EntryDataType.DOUBLE).finish();
+				return IConfigSerializer.noSync(builder.build(), new TestingValue(), TestingValue::parse, TestingValue::serialize);
 			}
 			
 			/**
-			 * Serialization function. Simply return a String array where each entry is a value within the spec.
+			 * The Parsing function which requires a Parsing map to be used.
+			 * Using map.getOrError will simply return a ParseResult object of the defined type.
+			 * Either the result contains an error which can be due to the type not matching or the result not being present.
+			 * Or it contains the value parsed.
+			 * If an error is found simply redirect it as the returning function with onlyError or with "withDefault" or other options.
+			 * This is up to you how it is handled.
 			 */
-			public String[] serialize() {
-				return new String[] {name, Integer.toString(year), Double.toString(fluffyness)};
+			public static ParseResult<TestingValue> parse(ParsedMap map) {
+				ParseResult<String> name = map.getOrError("Name", String.class);
+				if(name.hasError()) return name.onlyError();
+				ParseResult<Integer> year = map.getOrError("Year", Integer.class);
+				if(year.hasError()) return year.onlyError();
+				ParseResult<Double> fluff = map.getOrError("Fluffyness", Double.class);
+				if(fluff.hasError()) return fluff.onlyError();
+				ParseResult<ParsedList> list = map.getOrError("Counter", ParsedList.class);
+				if(list.hasError()) return list.onlyError();
+				return ParseResult.success(new TestingValue(name.getValue(), year.getValue(), fluff.getValue(), list.getValue().collect(String.class, new ObjectArrayList<>())));
+			}
+			
+			
+			/**
+			 * Serialize function must be a ParsedMap and you throw in your variables like JsonObjects.
+			 * As long as the Values inserted match the Serializer format it can automatically serialize it without any issues.
+			 */
+			public ParsedMap serialize() {
+				ParsedMap map = new ParsedMap();
+				map.put("Name", name);
+				map.put("Year", year);
+				map.put("Fluffyness", fluffyness);
+				return map;
+			}
+			
+			/**
+			 * The equals function has to be overriden to validate that the config entries have changed or not.
+			 * Otherwise gui/network implementations never know when a Object is changed.
+			 */
+			@Override
+			public boolean equals(Object obj) {
+				if(obj instanceof TestingValue) {
+					TestingValue other = (TestingValue)obj;
+					return Objects.equals(other.name, name) && other.year == year && Double.compare(other.fluffyness, fluffyness) == 0;
+				}
+				return false;
 			}
 		}
 ```
@@ -365,12 +388,32 @@ public class ColorValue extends BasicConfigEntry<ColorWrapper>
 	 * (The special thing is that the color would be displayed in the GUI as you type it in)
 	 */
 	@Override
-	public IEntryDataType getDataType() {
-		return SimpleDataType.ofVariant(ColorWrapper.class);
+	public IStructuredData getDataType() {
+		return SimpleData.variant(EntryDataType.INTEGER, ColorWrapper.class);
 	}
 	
 	public int get() {
 		return getValue().getColor();
+	}
+	
+	public int getRGB() {
+		return getValue().getColor() & 0xFFFFFF;
+	}
+	
+	public int getRGBA() {
+		return getValue().getColor() & 0xFFFFFFFF;
+	}
+	
+	public String toHex() {
+		return ColorWrapper.serialize(getValue().getColor());
+	}
+	
+	public String toRGBHex() {
+		return ColorWrapper.serializeRGB(getValue().getColor() & 0xFFFFFF);
+	}
+	
+	public String toRGBAHex() {
+		return ColorWrapper.serialize(getValue().getColor() & 0xFFFFFFFF);
 	}
 	
 	/**
@@ -424,7 +467,8 @@ public class ColorValue extends BasicConfigEntry<ColorWrapper>
 		return ParseResult.success(new ColorValue(key, result.getValue(), comment));
 	}
 	
-	public static class ColorWrapper {
+	public static class ColorWrapper extends Number {
+		private static final long serialVersionUID = -6737187197596158253L;
 		int color;
 		
 		public ColorWrapper(int color) {
@@ -435,9 +479,27 @@ public class ColorValue extends BasicConfigEntry<ColorWrapper>
 			return color;
 		}
 		
+		public int intValue() { return color; }
+		public long longValue() { return (long)color; }
+		public float floatValue() { return (float)color; }
+		public double doubleValue() { return (double)color; }
+		
+		public String serialize() {
+			return serialize(color);
+		}
+		
+		public static ParseResult<ColorWrapper> parse(String value) {
+			try { return ParseResult.success(new ColorWrapper(Long.decode(value).intValue())); }
+			catch (Exception e) { return ParseResult.error(value, e, "Couldn't parse Colour"); }
+		}
+		
 		public static ParseResult<Integer> parseInt(String value) {
 			try { return ParseResult.success(Long.decode(value).intValue()); }
 			catch (Exception e) { return ParseResult.error(value, e, "Couldn't parse Colour"); }
+		}
+		
+		public static String serializeRGB(long color) {
+			return "0x"+(Long.toHexString(0xFF000000L | (color & 0xFFFFFFL)).substring(2));
 		}
 		
 		public static String serialize(long color) {

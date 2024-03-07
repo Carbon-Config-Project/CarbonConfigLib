@@ -1,8 +1,7 @@
 package carbonconfiglib.base;
 
 import java.util.List;
-
-import com.google.common.base.Objects;
+import java.util.Objects;
 
 import carbonconfiglib.api.IConfigSerializer;
 import carbonconfiglib.utils.ParseResult;
@@ -45,25 +44,25 @@ public class TestingValue {
 		this.list = list;
 	}
 	
-	@Override
-	public boolean equals(Object obj) {
-		if(obj instanceof TestingValue) {
-			TestingValue other = (TestingValue)obj;
-			return Objects.equal(other.name, name) && other.year == year && Double.compare(other.fluffyness, fluffyness) == 0 && Objects.equal(other.list, list);
-		}
-		return false;
-	}
-	
 	public static IConfigSerializer<TestingValue> createSerializer() {
 		CompoundBuilder builder = new CompoundBuilder().setNewLined(true);
 		builder.simple("Name", EntryDataType.STRING).finish();
 		builder.simple("Year", EntryDataType.INTEGER).finish();
 		builder.simple("Fluffyness", EntryDataType.DOUBLE).finish();
 		builder.nested("Counter", ListBuilder.of(EntryDataType.STRING).build(false)).finish();
-		return IConfigSerializer.noSync(builder.build(), new TestingValue(), TestingValue::parseNew, TestingValue::serializeNew);
+		return IConfigSerializer.noSync(builder.build(), new TestingValue(), TestingValue::parse, TestingValue::serialize);
 	}
 	
-	public static ParseResult<TestingValue> parseNew(ParsedMap map) {
+	@Override
+	public boolean equals(Object obj) {
+		if(obj instanceof TestingValue) {
+			TestingValue other = (TestingValue)obj;
+			return Objects.equals(other.name, name) && other.year == year && Double.compare(other.fluffyness, fluffyness) == 0 && Objects.equals(other.list, list);
+		}
+		return false;
+	}
+	
+	public static ParseResult<TestingValue> parse(ParsedMap map) {
 		ParseResult<String> name = map.getOrError("Name", String.class);
 		if(name.hasError()) return name.onlyError();
 		ParseResult<Integer> year = map.getOrError("Year", Integer.class);
@@ -75,7 +74,7 @@ public class TestingValue {
 		return ParseResult.success(new TestingValue(name.getValue(), year.getValue(), fluff.getValue(), list.getValue().collect(String.class, new ObjectArrayList<>())));
 	}
 	
-	public ParsedMap serializeNew() {
+	public ParsedMap serialize() {
 		ParsedMap map = new ParsedMap();
 		map.put("Name", name);
 		map.put("Year", year);

@@ -1,8 +1,7 @@
 package carbonconfiglib.base;
 
 import java.util.List;
-
-import com.google.common.base.Objects;
+import java.util.Objects;
 
 import carbonconfiglib.api.IConfigSerializer;
 import carbonconfiglib.utils.ParseResult;
@@ -12,6 +11,22 @@ import carbonconfiglib.utils.structure.IStructuredData.EntryDataType;
 import carbonconfiglib.utils.structure.StructureCompound.CompoundBuilder;
 import carbonconfiglib.utils.structure.StructureList.ListBuilder;
 import speiger.src.collections.objects.lists.ObjectArrayList;
+
+/**
+ * Copyright 2024 Speiger, Meduris
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ * https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 public class MultiArrayValue
 {
@@ -35,7 +50,7 @@ public class MultiArrayValue
 	public boolean equals(Object obj) {
 		if(obj instanceof MultiArrayValue) {
 			MultiArrayValue other = (MultiArrayValue)obj;
-			return other.main == main && other.count == count && Objects.equal(other.values, values);
+			return other.main == main && other.count == count && Objects.equals(other.values, values);
 		}
 		return false;
 	}
