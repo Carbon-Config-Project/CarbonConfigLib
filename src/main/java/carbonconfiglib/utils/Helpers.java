@@ -127,7 +127,7 @@ public class Helpers {
 		}
 		if(builder.length() > 0) result.add(builder.toString());
 		
-		return trimArray(result.toArray(String[]::new));
+		return trimArray(result.toArray(new String[result.size()]));
 	}
 	
 	public static String mergeCompound(Map<String, String> entries, boolean newLine, int indentLevel) {
