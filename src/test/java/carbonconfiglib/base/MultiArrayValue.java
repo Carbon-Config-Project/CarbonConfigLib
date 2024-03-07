@@ -2,6 +2,8 @@ package carbonconfiglib.base;
 
 import java.util.List;
 
+import com.google.common.base.Objects;
+
 import carbonconfiglib.api.IConfigSerializer;
 import carbonconfiglib.utils.ParseResult;
 import carbonconfiglib.utils.ParsedCollections.ParsedList;
@@ -29,6 +31,15 @@ public class MultiArrayValue
 		this.values = values;
 	}
 	
+	@Override
+	public boolean equals(Object obj) {
+		if(obj instanceof MultiArrayValue) {
+			MultiArrayValue other = (MultiArrayValue)obj;
+			return other.main == main && other.count == count && Objects.equal(other.values, values);
+		}
+		return false;
+	}
+	
 	public static List<MultiArrayValue> defaultValue() {
 		List<MultiArrayValue> result = new ObjectArrayList<>();
 		result.add(new MultiArrayValue());
@@ -39,11 +50,11 @@ public class MultiArrayValue
 	}
 	
 	public static ParseResult<MultiArrayValue> parse(ParsedMap map) {
-		ParseResult<Boolean> main = map.getOrError("main", Boolean.class, "Variable [main] couldn't be Parsed");
+		ParseResult<Boolean> main = map.getOrError("main", Boolean.class);
 		if(main.hasError()) return main.onlyError();
-		ParseResult<Integer> count = map.getOrError("count", Integer.class, "Variable [count] couldn't be Parsed");
+		ParseResult<Integer> count = map.getOrError("count", Integer.class);
 		if(count.hasError()) return count.onlyError();
-		ParseResult<ParsedList> values = map.getOrError("values", ParsedList.class, "Variable [values] couldn't be Parsed");
+		ParseResult<ParsedList> values = map.getOrError("values", ParsedList.class);
 		if(values.hasError()) return values.onlyError();
 		List<List<String>> list = new ObjectArrayList<>();
 		for(ParsedList entry : values.getValue().typedIterator(ParsedList.class)) {

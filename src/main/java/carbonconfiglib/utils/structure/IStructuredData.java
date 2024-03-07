@@ -1,5 +1,7 @@
 package carbonconfiglib.utils.structure;
 
+import java.util.function.Function;
+
 import carbonconfiglib.utils.Helpers;
 import carbonconfiglib.utils.structure.StructureCompound.CompoundData;
 import carbonconfiglib.utils.structure.StructureList.ListData;
@@ -11,6 +13,7 @@ public interface IStructuredData
 	public default CompoundData asCompound() { throw new IllegalStateException("Type isn't a Compound Structure"); };
 	public default ListData asList() { throw new IllegalStateException("Type isn't a List Structure"); }
 	public void appendFormat(StringBuilder builder, boolean start);
+	public String generateDefaultValue(Function<SimpleData, String> defaultFactory);
 	
 	public static class SimpleData implements IStructuredData {
 		EntryDataType dataType;
@@ -34,6 +37,11 @@ public interface IStructuredData
 		@Override
 		public void appendFormat(StringBuilder builder, boolean start) {
 			builder.append(Helpers.firstLetterUppercase(dataType.name().toLowerCase()));
+		}
+		
+		@Override
+		public String generateDefaultValue(Function<SimpleData, String> defaultFactory) {
+			return defaultFactory.apply(this);
 		}
 	}
 	

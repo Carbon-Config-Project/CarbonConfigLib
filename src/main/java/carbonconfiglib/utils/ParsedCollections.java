@@ -136,6 +136,10 @@ public class ParsedCollections
 			return type.isInstance(obj) ? type.cast(obj) : null;
 		}
 		
+		public <T> ParseResult<T> getOrError(String key, Class<T> type) {
+			return getOrError(key, type, "Variable ["+key+"] couldn't be parsed");
+		}
+		
 		public <T> ParseResult<T> getOrError(String key, Class<T> type, String errorMessage) {
 			Object obj = parsed.get(key);
 			if(obj instanceof ParseResult) {

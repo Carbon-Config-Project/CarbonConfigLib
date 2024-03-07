@@ -2,6 +2,8 @@ package carbonconfiglib.base;
 
 import java.util.List;
 
+import com.google.common.base.Objects;
+
 import carbonconfiglib.api.IConfigSerializer;
 import carbonconfiglib.utils.ParseResult;
 import carbonconfiglib.utils.ParsedCollections.ParsedList;
@@ -43,6 +45,15 @@ public class TestingValue {
 		this.list = list;
 	}
 	
+	@Override
+	public boolean equals(Object obj) {
+		if(obj instanceof TestingValue) {
+			TestingValue other = (TestingValue)obj;
+			return Objects.equal(other.name, name) && other.year == year && Double.compare(other.fluffyness, fluffyness) == 0 && Objects.equal(other.list, list);
+		}
+		return false;
+	}
+	
 	public static IConfigSerializer<TestingValue> createSerializer() {
 		CompoundBuilder builder = new CompoundBuilder().setNewLined(true);
 		builder.simple("Name", EntryDataType.STRING).finish();
@@ -53,13 +64,13 @@ public class TestingValue {
 	}
 	
 	public static ParseResult<TestingValue> parseNew(ParsedMap map) {
-		ParseResult<String> name = map.getOrError("Name", String.class, "Variable [Name] couldn't be Parsed");
+		ParseResult<String> name = map.getOrError("Name", String.class);
 		if(name.hasError()) return name.onlyError();
-		ParseResult<Integer> year = map.getOrError("Year", Integer.class, "Variable [Year] couldn't be Parsed");
+		ParseResult<Integer> year = map.getOrError("Year", Integer.class);
 		if(year.hasError()) return year.onlyError();
-		ParseResult<Double> fluff = map.getOrError("Fluffyness", Double.class, "Variable [Fluffyness] couldn't be Parsed");
+		ParseResult<Double> fluff = map.getOrError("Fluffyness", Double.class);
 		if(fluff.hasError()) return fluff.onlyError();
-		ParseResult<ParsedList> list = map.getOrError("Counter", ParsedList.class, "Variable [Counter] couldn't be Parsed");
+		ParseResult<ParsedList> list = map.getOrError("Counter", ParsedList.class);
 		if(list.hasError()) return list.onlyError();
 		return ParseResult.success(new TestingValue(name.getValue(), year.getValue(), fluff.getValue(), list.getValue().collect(String.class, new ObjectArrayList<>())));
 	}

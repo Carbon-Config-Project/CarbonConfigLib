@@ -53,6 +53,11 @@ public class StructureList
 			type.getType().appendFormat(builder.append("List("), false);
 			builder.append(")");
 		}
+		
+		@Override
+		public String generateDefaultValue(Function<SimpleData, String> defaultFactory) {
+			return "["+type.getType().generateDefaultValue(defaultFactory)+"]";
+		}
 	}
 	
 	public static class ListBuilder {

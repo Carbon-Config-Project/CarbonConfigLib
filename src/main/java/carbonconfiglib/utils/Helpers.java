@@ -12,7 +12,7 @@ import java.util.StringJoiner;
 
 import speiger.src.collections.objects.lists.ObjectArrayList;
 import speiger.src.collections.objects.maps.interfaces.Object2ObjectMap;
-import speiger.src.collections.objects.sets.ObjectOpenHashSet;
+import speiger.src.collections.objects.sets.ObjectLinkedOpenHashSet;
 
 /**
  * Copyright 2023 Speiger, Meduris
@@ -80,9 +80,9 @@ public class Helpers {
 		return scanForElements(removeLayer(value, 1), ';', '[', ']'); 
 	}
 	
-	public static Map<String, String> splitArguments(String[] entries, List<String> keys) {
+	public static Map<String, String> splitArguments(String[] entries, List<String> keys, boolean addMissing) {
 		Map<String, String> namedArguments = Object2ObjectMap.builder().linkedMap();
-		Set<String> comparator = new ObjectOpenHashSet<>(keys);
+		Set<String> comparator = new ObjectLinkedOpenHashSet<>(keys);
 		for(int i = 0,m=entries.length;i<m;i++) {
 			String[] entry = entries[i].split(":", 2);
 			if(entry.length == 1 || !comparator.contains(entry[0])) {
@@ -90,6 +90,12 @@ public class Helpers {
 				continue;
 			}
 			namedArguments.put(entry[0], entry[1].trim());
+		}
+		if(addMissing) {
+			comparator.removeIf(namedArguments::containsKey);
+			for(String key : comparator) {
+				namedArguments.putIfAbsent(key, "");
+			}
 		}
 		return namedArguments;
 	}

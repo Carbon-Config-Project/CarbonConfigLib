@@ -3,6 +3,8 @@ package carbonconfiglib.base;
 import java.util.List;
 import java.util.Map;
 
+import com.google.common.base.Objects;
+
 import carbonconfiglib.api.IConfigSerializer;
 import carbonconfiglib.utils.ParseResult;
 import carbonconfiglib.utils.ParsedCollections.ParsedList;
@@ -30,6 +32,15 @@ public class MultiCompound
 		this.maps = maps;
 	}
 	
+	@Override
+	public boolean equals(Object obj) {
+		if(obj instanceof MultiCompound) {
+			MultiCompound other = (MultiCompound)obj;
+			return other.main == main && other.count == count && Objects.equal(other.maps, maps);
+		}
+		return false;
+	}
+	
 	public static IConfigSerializer<MultiCompound> createSerializer() {
 		CompoundBuilder innerBuilder = new CompoundBuilder().setNewLined(false);
 		for(int i = 0;i<5;i++) {
@@ -44,17 +55,17 @@ public class MultiCompound
 	}
 	
 	public static ParseResult<MultiCompound> parse(ParsedMap map) {
-		ParseResult<Boolean> main = map.getOrError("main", Boolean.class, "Variable [main] couldn't be Parsed");
+		ParseResult<Boolean> main = map.getOrError("main", Boolean.class);
 		if(main.hasError()) return main.onlyError();
-		ParseResult<Integer> count = map.getOrError("count", Integer.class, "Variable [count] couldn't be Parsed");
+		ParseResult<Integer> count = map.getOrError("count", Integer.class);
 		if(count.hasError()) return count.onlyError();
-		ParseResult<ParsedList> maps = map.getOrError("maps", ParsedList.class, "Variable [maps] couldn't be Parsed");
+		ParseResult<ParsedList> maps = map.getOrError("maps", ParsedList.class);
 		if(maps.hasError()) return maps.onlyError();
 		List<Map<String, Integer>> list = new ObjectArrayList<>();
 		for(ParsedMap entry : maps.getValue().typedIterator(ParsedMap.class)) {
 			Map<String, Integer> output = new Object2ObjectLinkedOpenHashMap<>();
 			for(String key : entry.keySet()) {
-				ParseResult<Integer> result = entry.getOrError(key, Integer.class, "Variable["+key+"] couldn't be Parsed");
+				ParseResult<Integer> result = entry.getOrError(key, Integer.class);
 				if(result.hasError()) return result.onlyError();
 				output.put(key, result.getValue());
 			}

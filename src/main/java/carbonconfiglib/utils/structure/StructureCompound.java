@@ -3,9 +3,11 @@ package carbonconfiglib.utils.structure;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.BiPredicate;
 import java.util.function.Function;
 
 import carbonconfiglib.api.ISuggestionProvider;
+import carbonconfiglib.api.ISuggestionProvider.Suggestion;
 import carbonconfiglib.utils.Helpers;
 import carbonconfiglib.utils.ParseResult;
 import carbonconfiglib.utils.ParsedCollections.ParsedList;
@@ -31,12 +33,21 @@ public class StructureCompound
 		public CompoundData asCompound() { return this; }
 		public boolean isNewLined() { return isNewLined; }
 		
+		@Override
+		public String generateDefaultValue(Function<SimpleData, String> defaultFactory) {
+			Map<String, String> result = Object2ObjectMap.builder().linkedMap();
+			for(Map.Entry<String, ICompoundEntry> entry : entries.entrySet()) {
+				result.put(entry.getKey(), entry.getValue().getType().generateDefaultValue(defaultFactory));
+			}
+			return Helpers.mergeCompound(result, false, 0);
+		}
+		
 		public List<String> getKeys() {
 			return new ObjectArrayList<>(entries.keySet());
 		}
 		
 		public ParsedMap parse(String input) {
-			return parseMap(Helpers.splitArguments(Helpers.splitCompound(input.trim()), getKeys()));
+			return parseMap(Helpers.splitArguments(Helpers.splitCompound(input.trim()), getKeys(), false));
 		}
 		
 		public String serialize(ParsedMap map, boolean allowMultiline) {
@@ -77,6 +88,17 @@ public class StructureCompound
 		public String[] getComments(String name) {
 			ICompoundEntry entry = entries.get(name);
 			return entry == null ? null : entry.getComment();
+		}
+		
+		public List<Suggestion> getSuggestions(String name, BiPredicate<String, String> filter) {
+			ICompoundEntry entry = entries.get(name);
+			if(entry == null) return ObjectLists.empty();
+			List<ISuggestionProvider> providers = entry.getSuggestions();
+			List<Suggestion> output = new ObjectArrayList<>();
+			for(ISuggestionProvider provider : providers) {
+				provider.provideSuggestions(output::add, T -> filter.test(name, T.getValue()));
+			}
+			return output;
 		}
 		
 		@Override

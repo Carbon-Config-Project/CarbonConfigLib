@@ -24,6 +24,8 @@ import carbonconfiglib.utils.structure.IStructuredData;
 import carbonconfiglib.utils.structure.IStructuredData.EntryDataType;
 import carbonconfiglib.utils.structure.IStructuredData.SimpleData;
 import carbonconfiglib.utils.structure.StructureCompound.CompoundData;
+import carbonconfiglib.utils.structure.StructureList.ListBuilder;
+import carbonconfiglib.utils.structure.StructureList.ListData;
 import speiger.src.collections.objects.lists.ObjectArrayList;
 import speiger.src.collections.objects.utils.ObjectLists;
 
@@ -1143,10 +1145,10 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public CompoundData getDataType() {
-			return serializer.getFormat();
+		public ListData getDataType() {
+			return ListBuilder.variants(serializer.getFormat()).build(false);
 		}
-
+		
 		@Override
 		public char getPrefix() {
 			return 'P';

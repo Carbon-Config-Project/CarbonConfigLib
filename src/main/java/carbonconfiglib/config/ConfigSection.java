@@ -234,10 +234,14 @@ public class ConfigSection {
 	
 	boolean isDefault() {
 		for(ConfigEntry<?> entry : entries.values()) {
-			if(!entry.isDefault()) return false;
+			if(!entry.isDefault()) {
+				return false;
+			}
 		}
 		for(ConfigSection section : subSections.values()) {
-			if(!section.isDefault()) return false;
+			if(!section.isDefault()) {
+				return false;
+			}
 		}
 		return true;		
 	}

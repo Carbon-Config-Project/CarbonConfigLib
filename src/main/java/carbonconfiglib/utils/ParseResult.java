@@ -71,6 +71,10 @@ public class ParseResult<T> {
 		return new ParseResult<>(null, error);
 	}
 	
+	public <E> E map(Function<T, E> function) {
+		return function.apply(value);
+	}
+	
 	public T getValue() {
 		return value;
 	}
