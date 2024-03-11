@@ -2,8 +2,10 @@ package carbonconfiglib.utils.structure;
 
 import java.util.List;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 import carbonconfiglib.api.ISuggestionProvider;
+import carbonconfiglib.api.ISuggestionProvider.Suggestion;
 import carbonconfiglib.utils.Helpers;
 import carbonconfiglib.utils.ParseResult;
 import carbonconfiglib.utils.ParsedCollections.ParsedList;
@@ -61,6 +63,15 @@ public class StructureList
 		
 		public IStructuredData getFormat() {
 			return type.getType();
+		}
+		
+		public List<Suggestion> getSuggestions(Predicate<Suggestion> suggestion) {
+			List<ISuggestionProvider> providers = type.getSuggestions();
+			List<Suggestion> output = new ObjectArrayList<>();
+			for(ISuggestionProvider provider : providers) {
+				provider.provideSuggestions(output::add, suggestion);
+			}
+			return output;
 		}
 		
 		@Override

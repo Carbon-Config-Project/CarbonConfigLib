@@ -3,6 +3,7 @@ package carbonconfiglib.api;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 import speiger.src.collections.objects.lists.ObjectArrayList;
@@ -30,6 +31,7 @@ public interface ISuggestionProvider
 	public static ISuggestionProvider array(Suggestion... elements) { return new SimpleSuggestion(ObjectArrayList.wrap(elements)); }
 	public static ISuggestionProvider list(List<Suggestion> elements) { return new SimpleSuggestion(elements); }
 	public static <E extends Enum<E>> ISuggestionProvider enums(Class<E> type) { return new EnumSuggestion<>(type); }
+	public static ISuggestionProvider wrapper(Function<Predicate<Suggestion>, List<Suggestion>> function) { return new Wrapper(function); }
 	
 	public static class SingleSuggestion implements ISuggestionProvider {
 		Suggestion value;
@@ -78,6 +80,18 @@ public interface ISuggestionProvider
 		}
 	}
 	
+	public static class Wrapper implements ISuggestionProvider {
+		Function<Predicate<Suggestion>, List<Suggestion>> function;
+
+		public Wrapper(Function<Predicate<Suggestion>, List<Suggestion>> function) {
+			this.function = function;
+		}
+
+		@Override
+		public void provideSuggestions(Consumer<Suggestion> output, Predicate<Suggestion> filter) {
+			function.apply(filter).forEach(output);
+		}
+	}
 	
 	public static class Suggestion {
 		String name;

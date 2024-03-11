@@ -816,8 +816,8 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		@Override
-		public SimpleData getDataType() {
-			return EntryDataType.STRING.toSimpleType();
+		public ListData getDataType() {
+			return ListBuilder.of(EntryDataType.STRING).addSuggestions(ISuggestionProvider.wrapper(this::getSuggestions)).build(true);
 		}
 		
 		public String[] get() {
@@ -829,6 +829,16 @@ public abstract class ConfigEntry<T> {
 			return "";
 		}
 		
+		@Override
+		public ParseResult<Boolean> canSet(String[] value) {
+			if(value == null) return ParseResult.partial(false, NullPointerException::new, "Value isn't allowed to be null");
+			if(filter == null) return ParseResult.success(true);
+			for(int i = 0,m=value.length;i<m;i++) {
+				if(!filter.test(value[i])) return ParseResult.partial(false, IllegalStateException::new, "Value ["+value[i]+"] isn't valid");
+			}
+			return ParseResult.success(true);
+		}
+
 		@Override
 		public ParseResult<String[]> parseValue(String value) {
 			return ParseResult.success(Helpers.splitArray(value, ","));
@@ -924,7 +934,7 @@ public abstract class ConfigEntry<T> {
 		
 		@Override
 		public IStructuredData getDataType() {
-			return EntryDataType.ENUM.toSimpleType();
+			return ListBuilder.enums(enumClass).build(false);
 		}
 
 		@Override
