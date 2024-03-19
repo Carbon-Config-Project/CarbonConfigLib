@@ -115,11 +115,8 @@ public class StructureList
 		public static ListBuilder of(EntryDataType type) { return new ListBuilder(ListEntry.create(type)); }
 		public static <T extends Enum<T>> ListBuilder enums(Class<T> clz) { return new ListBuilder(new ListEntry<>(EntryDataType.ENUM.toSimpleType(), E -> Helpers.parseEnum(clz, E), Enum::name)).addSuggestions(ISuggestionProvider.enums(clz)); }
 		public static <T> ListBuilder variants(EntryDataType displayType, Class<T> type, Function<String, ParseResult<T>> parse, Function<T, String> serialize) { return new ListBuilder(new ListEntry<>(SimpleData.variant(displayType, type), parse, serialize)); }
-		public static ListBuilder variants(IStructuredData type) {
-			if(type instanceof ListData) return new ListBuilder(new ListWrapper((ListData)type));
-			else if(type instanceof CompoundData) return new ListBuilder(new CompoundWrapper((CompoundData)type));
-			throw new IllegalArgumentException("Only Lists and Compounds are supported");
-		}
+		public static ListBuilder list(ListData data) { return new ListBuilder(new ListWrapper(data)); }
+		public static <T> ListBuilder object(CompoundData data, Function<ParsedMap, ParseResult<T>> parse, Function<T, ParsedMap> serialize) { return new ListBuilder(new CompoundWrapper<>(data, parse, serialize)); }
 	}
 	
 	public static interface IListEntry {
@@ -135,11 +132,15 @@ public class StructureList
 		public void addSuggestions(ISuggestionProvider... providers);
 	}
 	
-	static class CompoundWrapper implements IWritableListEntry {
+	static class CompoundWrapper<T> implements IWritableListEntry {
 		CompoundData data;
-
-		public CompoundWrapper(CompoundData data) {
+		Function<ParsedMap, ParseResult<T>> parse;
+		Function<T, ParsedMap> serialize;
+		
+		public CompoundWrapper(CompoundData data, Function<ParsedMap, ParseResult<T>> parse, Function<T, ParsedMap> serialize) {
 			this.data = data;
+			this.parse = parse;
+			this.serialize = serialize;
 		}
 		
 		@Override
@@ -149,14 +150,14 @@ public class StructureList
 		@Override
 		public void parse(List<String> input, ParsedList output) {
 			for(int i = 0,m=input.size();i<m;i++) {
-				output.add(data.parse(input.get(i)));
+				output.add(parse.apply(data.parse(input.get(i))));
 			}
 		}
 		
 		@Override
 		public void serialize(ParsedList input, List<String> output, boolean allowMultine, int indent) {
 			for(int i = 0,m=input.size();i<m;i++) {
-				output.add(data.serialize(input.get(i, ParsedMap.class), allowMultine, indent));
+				output.add(data.serialize(serialize.apply(input.getUnsafe(i)), allowMultine, indent));
 			}
 		}
 

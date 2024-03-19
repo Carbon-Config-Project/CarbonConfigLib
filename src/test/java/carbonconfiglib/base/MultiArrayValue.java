@@ -82,7 +82,7 @@ public class MultiArrayValue
 		CompoundBuilder builder = new CompoundBuilder().setNewLined(true);
 		builder.simple("main", EntryDataType.BOOLEAN).finish();
 		builder.simple("count", EntryDataType.INTEGER).finish();
-		builder.nested("values", ListBuilder.variants(ListBuilder.of(EntryDataType.STRING).build(false)).build(true)).finish();
+		builder.list("values", ListBuilder.list(ListBuilder.of(EntryDataType.STRING).build(false)).build(true)).finish();
 		return IConfigSerializer.noSync(builder.build(), new MultiArrayValue(), MultiArrayValue::parse, MultiArrayValue::serialize);
 	}
 	

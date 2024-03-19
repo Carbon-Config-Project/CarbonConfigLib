@@ -49,7 +49,7 @@ public class TestingValue {
 		builder.simple("Name", EntryDataType.STRING).finish();
 		builder.simple("Year", EntryDataType.INTEGER).finish();
 		builder.simple("Fluffyness", EntryDataType.DOUBLE).finish();
-		builder.nested("Counter", ListBuilder.of(EntryDataType.STRING).build(false)).finish();
+		builder.list("Counter", ListBuilder.of(EntryDataType.STRING).build(false)).finish();
 		return IConfigSerializer.noSync(builder.build(), new TestingValue(), TestingValue::parse, TestingValue::serialize);
 	}
 	

@@ -65,9 +65,20 @@ public class MultiCompound
 		CompoundBuilder builder = new CompoundBuilder().setNewLined(true);
 		builder.simple("main", EntryDataType.BOOLEAN).finish();
 		builder.simple("count", EntryDataType.INTEGER).finish();
-		builder.nested("maps", ListBuilder.variants(innerBuilder.build()).build(true)).finish();
+		builder.list("maps", ListBuilder.object(innerBuilder.build(), MultiCompound::parseMap, ParsedMap::new).build(true)).finish();
 		return IConfigSerializer.noSync(builder.build(), new MultiCompound(), MultiCompound::parse, MultiCompound::serialize);
 	}
+	
+	private static ParseResult<Map<String, Integer>> parseMap(ParsedMap map) {
+		Map<String, Integer> output = new Object2ObjectLinkedOpenHashMap<>();
+		for(String key : map.keySet()) {
+			ParseResult<Integer> result = map.getOrError(key, Integer.class);
+			if(result.hasError()) return result.onlyError();
+			output.put(key, result.getValue());
+		}
+		return ParseResult.success(output);
+	}
+	
 	
 	public static ParseResult<MultiCompound> parse(ParsedMap map) {
 		ParseResult<Boolean> main = map.getOrError("main", Boolean.class);
@@ -76,28 +87,14 @@ public class MultiCompound
 		if(count.hasError()) return count.onlyError();
 		ParseResult<ParsedList> maps = map.getOrError("maps", ParsedList.class);
 		if(maps.hasError()) return maps.onlyError();
-		List<Map<String, Integer>> list = new ObjectArrayList<>();
-		for(ParsedMap entry : maps.getValue().typedIterator(ParsedMap.class)) {
-			Map<String, Integer> output = new Object2ObjectLinkedOpenHashMap<>();
-			for(String key : entry.keySet()) {
-				ParseResult<Integer> result = entry.getOrError(key, Integer.class);
-				if(result.hasError()) return result.onlyError();
-				output.put(key, result.getValue());
-			}
-			list.add(output);
-		}
-		return ParseResult.success(new MultiCompound(main.getValue(), count.getValue(), list));
+		return ParseResult.success(new MultiCompound(main.getValue(), count.getValue(), maps.getValue().collectCollections(new ObjectArrayList<>())));
 	}
 	
 	public ParsedMap serialize() {
 		ParsedMap map = new ParsedMap();
 		map.put("main", main);
 		map.put("count", count);
-		ParsedList list = new ParsedList();
-		for(Map<String, Integer> entryMap : maps) {
-			list.add(new ParsedMap(entryMap));
-		}
-		map.put("maps", list);
+		map.put("maps", new ParsedList(maps));
 		return map;
 	}
 	

@@ -149,10 +149,12 @@ public class StructureCompound
 			return start(new CompoundEntry<>(name, SimpleData.variant(displayType, type), parse, serialize));
 		}
 		
-		public CompoundBuilder nested(String name, IStructuredData entry) {
-			if(entry instanceof ListData) return start(new WrappedListEntry(name, (ListData)entry));
-			if(entry instanceof CompoundData) return start(new WrappedCompoundEntry(name, (CompoundData)entry));
-			throw new IllegalArgumentException("Only Lists and Compounds are supported");
+		public CompoundBuilder list(String name, ListData entry) {
+			return start(new WrappedListEntry(name, entry));
+		}
+		
+		public <T> CompoundBuilder object(String name, CompoundData data, Function<ParsedMap, ParseResult<T>> parse, Function<T, ParsedMap> serialize) {
+			return start(new WrappedCompoundEntry<>(name, data, parse, serialize));
 		}
 		
 		public CompoundBuilder addSuggestions(ISuggestionProvider... providers) {
@@ -250,14 +252,18 @@ public class StructureCompound
 		public void setComments(String... comments) { this.comments = comments; }
 	}
 	
-	static class WrappedCompoundEntry implements IWritableCompoundEntry {
+	static class WrappedCompoundEntry<T> implements IWritableCompoundEntry {
 		String name;
 		String[] comments;
 		CompoundData data;
+		Function<ParsedMap, ParseResult<T>> parse;
+		Function<T, ParsedMap> serialize;
 		
-		public WrappedCompoundEntry(String name, CompoundData data) {
+		public WrappedCompoundEntry(String name, CompoundData data, Function<ParsedMap, ParseResult<T>> parse, Function<T, ParsedMap> serialize) {
 			this.name = name;
 			this.data = data;
+			this.parse = parse;
+			this.serialize = serialize;
 		}
 		
 		@Override
@@ -270,12 +276,12 @@ public class StructureCompound
 		public String[] getComment() { return comments; }
 		@Override
 		public void parse(Map<String, String> input, ParsedMap output) {
-			output.put(name, data.parse(input.getOrDefault(name, "")));
+			output.put(name, parse.apply(data.parse(input.getOrDefault(name, ""))));
 		}
 		
 		@Override
 		public void serialize(ParsedMap input, Map<String, String> output, boolean allowMultiline, int indent) {
-			output.put(name, data.serialize(input.get(name, ParsedMap.class), allowMultiline, indent));
+			output.put(name, data.serialize(serialize.apply(input.getUnsafe(name)), allowMultiline, indent));
 		}
 		
 		@Override

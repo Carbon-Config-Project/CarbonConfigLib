@@ -1156,7 +1156,7 @@ public abstract class ConfigEntry<T> {
 		
 		@Override
 		public ListData getDataType() {
-			return ListBuilder.variants(serializer.getFormat()).build(false);
+			return ListBuilder.object(serializer.getFormat(), serializer::deserialize, serializer::serialize).build(false);
 		}
 		
 		@Override

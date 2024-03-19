@@ -95,6 +95,16 @@ public class ParsedCollections
 			return output;
 		}
 		
+		/*
+		 * Note: doesn't check type safety and is inherently unsafe as is, but as long as you have your types correct you will be fine.
+		 */
+		@SuppressWarnings("unchecked")
+		public <T, E extends Collection<T>> E collectCollections(E output) {
+			output.addAll((Collection<? extends T>)objects);
+			return output;
+		}
+
+		
 		public <T> Iterable<T> typedIterator(Class<T> type) {
 			return () -> new Iterator<T>() {
 				Iterator<Object> iter = objects.iterator();
