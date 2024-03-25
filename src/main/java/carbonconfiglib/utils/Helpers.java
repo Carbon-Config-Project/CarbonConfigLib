@@ -44,6 +44,15 @@ public class Helpers {
 		return string.replaceFirst(first, first.toUpperCase());
 	}
 	
+	public static String toPascalCase(String string) {
+		StringBuilder builder = new StringBuilder();
+		for(String s : string.split("_- ")) {
+			if(s.isEmpty()) continue;
+			builder.append(firstLetterUppercase(s)).append(" ");
+		}
+		return builder.substring(0, builder.length() - 1);
+	}
+	
 	public static void ensureFolder(Path folder) {
 		if (Files.notExists(folder)) {
 			try { Files.createDirectories(folder); }
