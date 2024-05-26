@@ -6,6 +6,7 @@ import java.util.Objects;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 
+import carbonconfiglib.api.IEntrySettings;
 import carbonconfiglib.api.ISuggestionProvider;
 import carbonconfiglib.api.ISuggestionProvider.Suggestion;
 import carbonconfiglib.utils.Helpers;
@@ -40,10 +41,12 @@ public class StructureCompound
 {
 	public static class CompoundData implements IStructuredData {
 		Map<String, ICompoundEntry> entries = new Object2ObjectLinkedOpenHashMap<>();
+		IEntrySettings settings;
 		boolean isNewLined = true;
 		
 		@Override
 		public StructureType getDataType() {return StructureType.COMPOUND; }
+		public IEntrySettings getSettings() { return settings; }
 		@Override
 		public CompoundData asCompound() { return this; }
 		public boolean isNewLined() { return isNewLined; }
@@ -169,6 +172,11 @@ public class StructureCompound
 		
 		public CompoundBuilder forceSuggestions(boolean value) {
 			Objects.requireNonNull(current, "No Entry to configure").setForced(value);
+			return this;
+		}
+		
+		public CompoundBuilder setSettings(IEntrySettings settings) {
+			result.settings = settings;
 			return this;
 		}
 		

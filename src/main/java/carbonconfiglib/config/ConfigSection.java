@@ -6,6 +6,7 @@ import java.util.StringJoiner;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import carbonconfiglib.api.IConfigSerializer;
+import carbonconfiglib.api.IEntrySettings;
 import carbonconfiglib.config.ConfigEntry.ArrayValue;
 import carbonconfiglib.config.ConfigEntry.BoolValue;
 import carbonconfiglib.config.ConfigEntry.DoubleValue;
@@ -43,6 +44,7 @@ public class ConfigSection {
 	private String name;
 	private String[] comment;
 	private ConfigSection parent = null;
+	private IEntrySettings settings = null;
 	private boolean used = false;
 	private Object2ObjectMap<String, ConfigEntry<?>> entries = new Object2ObjectLinkedOpenHashMap<>();
 	private Object2ObjectMap<String, ConfigSection> subSections = new Object2ObjectLinkedOpenHashMap<>();
@@ -57,6 +59,11 @@ public class ConfigSection {
 	
 	public ConfigSection setComment(String...comment) {
 		this.comment = Helpers.validateComments(comment);
+		return this;
+	}
+	
+	public ConfigSection setSettings(IEntrySettings settings) {
+		this.settings = settings;
 		return this;
 	}
 	
@@ -256,6 +263,10 @@ public class ConfigSection {
 	
 	public String[] getComment() {
 		return comment;
+	}
+	
+	public IEntrySettings getSettings() {
+		return settings;
 	}
 	
 	public String getSectionPath() {

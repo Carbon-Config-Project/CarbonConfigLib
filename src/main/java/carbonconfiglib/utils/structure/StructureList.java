@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+import carbonconfiglib.api.IEntrySettings;
 import carbonconfiglib.api.ISuggestionProvider;
 import carbonconfiglib.api.ISuggestionProvider.Suggestion;
 import carbonconfiglib.utils.Helpers;
@@ -37,9 +38,11 @@ public class StructureList
 	public static class ListData implements IStructuredData {
 		IListEntry type;
 		boolean isNewLined;
+		IEntrySettings settings;
 		
 		@Override
 		public StructureType getDataType() { return StructureType.LIST; }
+		public IEntrySettings getSettings() { return settings; }
 		@Override
 		public ListData asList() { return this; }
 		public boolean isNewLined() { return isNewLined; }
@@ -101,6 +104,11 @@ public class StructureList
 		
 		public ListBuilder setForceSuggestions(boolean value) {
 			entry.setForced(value);
+			return this;
+		}
+		
+		public ListBuilder setSettings(IEntrySettings settings) {
+			result.settings = settings;
 			return this;
 		}
 		

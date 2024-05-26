@@ -2,6 +2,7 @@ package carbonconfiglib.utils.structure;
 
 import java.util.function.Function;
 
+import carbonconfiglib.api.IEntrySettings;
 import carbonconfiglib.utils.Helpers;
 import carbonconfiglib.utils.structure.StructureCompound.CompoundData;
 import carbonconfiglib.utils.structure.StructureList.ListData;
@@ -24,6 +25,7 @@ import carbonconfiglib.utils.structure.StructureList.ListData;
 public interface IStructuredData
 {
 	public StructureType getDataType();
+	public IEntrySettings getSettings();
 	public default SimpleData asSimple() { throw new IllegalStateException("Type isn't a Simple Structure"); }
 	public default CompoundData asCompound() { throw new IllegalStateException("Type isn't a Compound Structure"); };
 	public default ListData asList() { throw new IllegalStateException("Type isn't a List Structure"); }
@@ -33,21 +35,26 @@ public interface IStructuredData
 	public static class SimpleData implements IStructuredData {
 		EntryDataType dataType;
 		Class<?> variant;
+		IEntrySettings settings;
 		
-		private SimpleData(EntryDataType dataType, Class<?> variant) {
+		private SimpleData(EntryDataType dataType, Class<?> variant, IEntrySettings settings) {
 			this.dataType = dataType;
 			this.variant = variant;
+			this.settings = settings;
 		}
 		
-		public static SimpleData variant(EntryDataType type, Class<?> variant) { return new SimpleData(type, variant); }
-		private static SimpleData of(EntryDataType type) { return new SimpleData(type, null); }
+		public static SimpleData variant(EntryDataType type, Class<?> variant) { return new SimpleData(type, variant, null); }
+		private static SimpleData of(EntryDataType type) { return new SimpleData(type, null, null); }
 		
 		@Override
 		public StructureType getDataType() {return StructureType.SIMPLE; }
+		@Override
+		public IEntrySettings getSettings() { return settings; }
 		public SimpleData asSimple() { return this; }
 		public EntryDataType getType() { return dataType; }
 		public Class<?> getVariant() { return variant; }
 		public boolean isVariant() { return variant != null; }
+		public SimpleData withSettings(IEntrySettings settings) { return new SimpleData(dataType, variant, settings); }
 		
 		@Override
 		public void appendFormat(StringBuilder builder, boolean start) {
@@ -81,8 +88,7 @@ public interface IStructuredData
 			simple = custom ? null : SimpleData.of(this);
 		}
 		
-		public SimpleData toSimpleType() {
-			return simple;
-		}
+		public SimpleData toSimpleType() { return simple; }
+		public SimpleData toConfiguredType(IEntrySettings settings) { return settings == null ? simple : simple.withSettings(settings); }
 	}
 }

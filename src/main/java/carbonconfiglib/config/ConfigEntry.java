@@ -11,6 +11,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 
 import carbonconfiglib.api.IConfigSerializer;
+import carbonconfiglib.api.IEntrySettings;
 import carbonconfiglib.api.IReloadMode;
 import carbonconfiglib.api.ISuggestionProvider;
 import carbonconfiglib.api.ISuggestionProvider.Suggestion;
@@ -56,6 +57,7 @@ public abstract class ConfigEntry<T> {
 	private boolean wasLoaded = false;
 	private boolean forcedSuggestions = false;
 	private IReloadMode reload = null;
+	private IEntrySettings settings = null;
 	private SyncedConfig<ConfigEntry<T>> syncCache;
 	private List<ISuggestionProvider> providers = new ObjectArrayList<>();
 
@@ -90,6 +92,8 @@ public abstract class ConfigEntry<T> {
 		copy.providers.addAll(providers);
 		copy.hidden = hidden;
 		copy.wasLoaded = wasLoaded;
+		copy.reload = reload;
+		copy.settings = settings;
 		return copy;
 	}
 	
@@ -195,6 +199,10 @@ public abstract class ConfigEntry<T> {
 		return reload;
 	}
 	
+	public final IEntrySettings getSettings() {
+		return settings;
+	}
+	
 	public final void onSynced() {
 		lastValue = value;
 	}
@@ -232,6 +240,12 @@ public abstract class ConfigEntry<T> {
 	@SuppressWarnings("unchecked")
 	public final <S extends ConfigEntry<T>> S setRequiredReload(IReloadMode mode) {
 		this.reload = mode;
+		return (S)this;
+	}
+	
+	@SuppressWarnings("unchecked")
+	public final <S extends ConfigEntry<T>> S setSettings(IEntrySettings settings) {
+		this.settings = settings;
 		return (S)this;
 	}
 	
@@ -481,6 +495,14 @@ public abstract class ConfigEntry<T> {
 			return this;
 		}
 		
+		public int getMin() {
+			return min; 
+		}
+		
+		public int getMax() {
+			return max;
+		}
+		
 		@Override
 		protected IntValue copy() {
 			return new IntValue(getKey(), getDefault(), getComment()).setRange(min, max);
@@ -573,6 +595,14 @@ public abstract class ConfigEntry<T> {
 			this.min = min;
 			this.max = max;
 			return this;
+		}
+		
+		public double getMin() {
+			return min;
+		}
+		
+		public double getMax() {
+			return max;
 		}
 		
 		@Override
@@ -707,7 +737,10 @@ public abstract class ConfigEntry<T> {
 		public TempValue withFilter(Predicate<String> filter) {
 			throw new UnsupportedOperationException("Filters are not supported with Temp Values");
 		}
-
+		
+		@Override
+		public Predicate<String> getFilter() { throw new UnsupportedOperationException("Filters are not supported with Temp Values"); }
+		
 		@Override
 		protected TempValue copy() {
 			return new TempValue(getKey(), getDefault(), getComment());
@@ -728,6 +761,10 @@ public abstract class ConfigEntry<T> {
 		public StringValue withFilter(Predicate<String> filter) {
 			this.filter = filter;
 			return this;
+		}
+		
+		public Predicate<String> getFilter() {
+			return filter;
 		}
 		
 		@Override
@@ -805,6 +842,10 @@ public abstract class ConfigEntry<T> {
 			return this;
 		}
 		
+		public Predicate<String> getFilter() {
+			return filter; 
+		}
+		
 		@Override
 		protected ArrayValue copy() {
 			return new ArrayValue(getKey(), getDefault(), getComment()).withFilter(filter);
@@ -817,7 +858,7 @@ public abstract class ConfigEntry<T> {
 		
 		@Override
 		public ListData getDataType() {
-			return ListBuilder.of(EntryDataType.STRING).addSuggestions(ISuggestionProvider.wrapper(this::getSuggestions)).build(true);
+			return ListBuilder.of(EntryDataType.STRING).setSettings(getSettings()).addSuggestions(ISuggestionProvider.wrapper(this::getSuggestions)).build(true);
 		}
 		
 		public String[] get() {
@@ -1156,7 +1197,7 @@ public abstract class ConfigEntry<T> {
 		
 		@Override
 		public ListData getDataType() {
-			return ListBuilder.object(serializer.getFormat(), serializer::deserialize, serializer::serialize).build(false);
+			return ListBuilder.object(serializer.getFormat(), serializer::deserialize, serializer::serialize).setSettings(getSettings()).build(false);
 		}
 		
 		@Override
