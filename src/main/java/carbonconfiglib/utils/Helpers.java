@@ -174,6 +174,16 @@ public class Helpers {
 		return Math.min(Math.max(value, min), max);
 	}
 	
+	/** Fuzzy Function since Auto Unboxing forces Double Object Instances which crash when you insert a Float! */
+	public static String fuzzyDoubleToString(Number number) {
+		return String.valueOf(number.doubleValue());
+	}
+	
+	/** Fuzzy Function since Auto Unboxing forces Integer Object Instances which crash when you insert a Short or Byte! */
+	public static String fuzzyIntegerToString(Number number) {
+		return String.valueOf(number.intValue());
+	}
+	
 	public static ParseResult<String> parseString(String value) {
 		return ParseResult.success(value);
 	}

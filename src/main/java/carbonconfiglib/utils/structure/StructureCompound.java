@@ -343,8 +343,8 @@ public class StructureCompound
 		private static CompoundEntry<?> create(String name, EntryDataType type) {
 			switch(type) {
 				case BOOLEAN: return new CompoundEntry<>(name, type.toSimpleType(), Helpers::parseBoolean, String::valueOf);
-				case INTEGER: return new CompoundEntry<>(name, type.toSimpleType(), Helpers::parseInt, String::valueOf);
-				case DOUBLE: return new CompoundEntry<>(name, type.toSimpleType(), Helpers::parseDouble, String::valueOf);
+				case INTEGER: return new CompoundEntry<>(name, type.toSimpleType(), Helpers::parseInt, Helpers::fuzzyIntegerToString);
+				case DOUBLE: return new CompoundEntry<>(name, type.toSimpleType(), Helpers::parseDouble, Helpers::fuzzyDoubleToString);
 				case STRING: return new CompoundEntry<>(name, type.toSimpleType(), Helpers::parseString, Function.identity());
 				default: throw new IllegalStateException("Unsupported Type");
 			}

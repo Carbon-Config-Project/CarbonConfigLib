@@ -251,8 +251,8 @@ public class StructureList
 		private static ListEntry<?> create(EntryDataType type) {
 			switch(type) {
 				case BOOLEAN: return new ListEntry<>(type.toSimpleType(), Helpers::parseBoolean, String::valueOf);
-				case INTEGER: return new ListEntry<>(type.toSimpleType(), Helpers::parseInt, String::valueOf);
-				case DOUBLE: return new ListEntry<>(type.toSimpleType(), Helpers::parseDouble, String::valueOf);
+				case INTEGER: return new ListEntry<>(type.toSimpleType(), Helpers::parseInt, Helpers::fuzzyIntegerToString);
+				case DOUBLE: return new ListEntry<>(type.toSimpleType(), Helpers::parseDouble, Helpers::fuzzyDoubleToString);
 				case STRING: return new ListEntry<>(type.toSimpleType(), Helpers::parseString, Function.identity());
 				default: throw new IllegalStateException("Unsupported Type");
 			}
