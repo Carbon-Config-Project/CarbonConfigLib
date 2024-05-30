@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
 
+import carbonconfiglib.api.IEntrySettings;
 import carbonconfiglib.utils.Helpers;
 import carbonconfiglib.utils.MultilinePolicy;
 import carbonconfiglib.utils.SyncType;
@@ -48,6 +49,12 @@ public class Config {
 	
 	public ConfigSection getSection(String name) {
 		return sections.get(name);
+	}
+	
+	public void applyEntrySettings(IEntrySettings settings, Class<?> type, boolean children) {
+		for(ConfigSection section : sections.values()) {
+			section.applyEntrySettings(settings, type, children);
+		}
 	}
 	
 	ConfigSection getSectionRecursive(String[] names) {

@@ -67,6 +67,18 @@ public class ConfigSection {
 		return this;
 	}
 	
+	public void applyEntrySettings(IEntrySettings settings, Class<?> type, boolean children) {
+		if(children) {
+			for(ConfigSection section : subSections.values()) {
+				section.applyEntrySettings(settings, type, true);
+			}
+		}
+		if(type.isInstance(this)) setSettings(settings);
+		for(ConfigEntry<?> entry : entries.values()) {
+			if(type.isInstance(entry)) entry.setSettings(settings);
+		}
+	}
+	
 	void parseComment(String...comment) {
 		if(comment != null) return;
 		this.comment = Helpers.validateComments(comment);
