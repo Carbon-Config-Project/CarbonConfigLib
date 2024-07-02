@@ -1,5 +1,11 @@
 package carbonconfiglib.api;
 
+import java.util.List;
+import java.util.Map;
+
+import speiger.src.collections.objects.lists.ObjectArrayList;
+import speiger.src.collections.objects.maps.interfaces.Object2ObjectMap;
+
 /**
  * Copyright 2024 Speiger, Meduris
  * 
@@ -16,5 +22,28 @@ package carbonconfiglib.api;
  * limitations under the License.
  */
 public interface IEntrySettings {
+	public default <T> T get(Class<T> clz) { return clz.isInstance(this) ? clz.cast(this) : null; }
 	
+	
+	public static IEntrySettings compound(IEntrySettings... settings) { return new CompoundEntrySettings(ObjectArrayList.wrap(settings)); }
+	
+	public static class CompoundEntrySettings implements IEntrySettings {
+		Map<Class<?>, IEntrySettings> settings = Object2ObjectMap.builder().map();
+		
+		public CompoundEntrySettings(List<IEntrySettings> settings) {
+			for(IEntrySettings setting : settings) {
+				this.settings.put(setting.getClass(), setting);
+			}
+		}
+		
+		public CompoundEntrySettings(Map<Class<?>, IEntrySettings> settings) {
+			this.settings.putAll(settings);
+		}
+		
+		@Override
+		public <T> T get(Class<T> clz) {
+			IEntrySettings setting = settings.get(clz);
+			return setting == null ? null : clz.cast(setting);
+		}
+	}
 }
