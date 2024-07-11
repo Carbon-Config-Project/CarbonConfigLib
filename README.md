@@ -17,7 +17,7 @@ repositories {
 	maven { url = "https://jitpack.io" }
 }
 dependencies {
-	implementation 'com.github.Carbon-Config-Project:CarbonConfigLib:1.0.0'
+	implementation 'com.github.Carbon-Config-Project:CarbonConfigLib:1.3.0'
 }
 
 ```
