@@ -116,7 +116,7 @@ public class FileSystemWatcher {
 			if (!folders.containsValue(configFile.getParent())) {
 				try {
 					folders.put(configFile.getParent().register(watchService, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_MODIFY), configFile.getParent());
-				} catch (IOException e) {
+				} catch (Exception e) {
 					logger.error("could not register WatchService for directory {}", configFile.getParent());
 				}
 			}
