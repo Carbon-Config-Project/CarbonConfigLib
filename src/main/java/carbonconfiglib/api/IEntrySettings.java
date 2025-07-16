@@ -24,8 +24,23 @@ import speiger.src.collections.objects.maps.interfaces.Object2ObjectMap;
 public interface IEntrySettings {
 	public default <T> T get(Class<T> clz) { return clz.isInstance(this) ? clz.cast(this) : null; }
 	
-	
 	public static IEntrySettings compound(IEntrySettings... settings) { return new CompoundEntrySettings(ObjectArrayList.wrap(settings)); }
+	public static IEntrySettings merge(IEntrySettings original, IEntrySettings toAdd) {
+		if(original == null) return toAdd;
+		if(toAdd == null) return original;
+		if(original instanceof CompoundEntrySettings) {
+			((CompoundEntrySettings)original).merge(toAdd);
+			return original;
+		}
+		if(toAdd instanceof CompoundEntrySettings) {
+			((CompoundEntrySettings)original).merge(toAdd);
+			return toAdd;
+		}
+		if(original.getClass() == toAdd.getClass()) {
+			return toAdd;
+		}
+		return new CompoundEntrySettings(ObjectArrayList.wrap(original, toAdd));
+	}
 	
 	public static class CompoundEntrySettings implements IEntrySettings {
 		Map<Class<?>, IEntrySettings> settings = Object2ObjectMap.builder().map();
@@ -40,10 +55,42 @@ public interface IEntrySettings {
 			this.settings.putAll(settings);
 		}
 		
+		private void merge(IEntrySettings settings) {
+			if(settings instanceof CompoundEntrySettings) {
+				this.settings.putAll(((CompoundEntrySettings)settings).settings);
+				return;
+			}
+			this.settings.put(settings.getClass(), settings);
+		}
+		
 		@Override
 		public <T> T get(Class<T> clz) {
 			IEntrySettings setting = settings.get(clz);
 			return setting == null ? null : clz.cast(setting);
+		}
+	}
+	
+	public static class TranslatedComment implements IEntrySettings {
+		String translationKey;
+
+		public TranslatedComment(String translationKey) {
+			this.translationKey = translationKey;
+		}
+		
+		public String getTranslationKey() {
+			return translationKey;
+		}
+	}
+	
+	public static class TranslatedKey implements IEntrySettings {
+		String translationKey;
+
+		public TranslatedKey(String translationKey) {
+			this.translationKey = translationKey;
+		}
+		
+		public String getTranslationKey() {
+			return translationKey;
 		}
 	}
 }

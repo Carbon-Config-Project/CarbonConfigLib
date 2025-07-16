@@ -12,6 +12,8 @@ import java.util.function.Predicate;
 
 import carbonconfiglib.api.IConfigSerializer;
 import carbonconfiglib.api.IEntrySettings;
+import carbonconfiglib.api.IEntrySettings.TranslatedComment;
+import carbonconfiglib.api.IEntrySettings.TranslatedKey;
 import carbonconfiglib.api.IReloadMode;
 import carbonconfiglib.api.ISuggestionProvider;
 import carbonconfiglib.api.ISuggestionProvider.Suggestion;
@@ -82,9 +84,10 @@ public abstract class ConfigEntry<T> {
 		if(this.comment == null) this.comment = Helpers.validateComments(comment);
 	}
 	
-	public ConfigEntry<T> setComment(String... comment) {
+	@SuppressWarnings("unchecked")
+	public <S extends ConfigEntry<T>> S setComment(String... comment) {
 		this.comment = Helpers.validateComments(comment);
-		return this;
+		return (S)this;
 	}
 	
 	protected ConfigEntry<T> deepCopy() {
@@ -199,6 +202,10 @@ public abstract class ConfigEntry<T> {
 		return reload;
 	}
 	
+	public <S extends IEntrySettings> S getSetting(Class<S> clz) {
+		return settings == null ? null : settings.get(clz);
+	}
+	
 	public final IEntrySettings getSettings() {
 		return settings;
 	}
@@ -244,9 +251,33 @@ public abstract class ConfigEntry<T> {
 	}
 	
 	@SuppressWarnings("unchecked")
+	public final <S extends ConfigEntry<T>> S addSettings(IEntrySettings settings) {
+		this.settings = IEntrySettings.merge(this.settings, settings);
+		return (S)this;
+	}
+	
+	@SuppressWarnings("unchecked")
 	public final <S extends ConfigEntry<T>> S setSettings(IEntrySettings settings) {
 		this.settings = settings;
 		return (S)this;
+	}
+	
+	public String getTranslationKey() {
+		TranslatedKey comment = settings == null ? null : settings.get(TranslatedKey.class);
+		return comment == null ? null : comment.getTranslationKey();
+	}
+	
+	public String getTranslationComment() {
+		TranslatedComment comment = settings == null ? null : settings.get(TranslatedComment.class);
+		return comment == null ? null : comment.getTranslationKey();
+	}
+	
+	public <S extends ConfigEntry<T>> S setTranslationKey(String translationKey) {
+		return addSettings(new TranslatedKey(translationKey));
+	}
+	
+	public <S extends ConfigEntry<T>> S setTranslationComment(String translationKey) {
+		return addSettings(new TranslatedComment(translationKey));
 	}
 	
 	public ConfigEntry<T> setKey(String key) {
@@ -296,7 +327,9 @@ public abstract class ConfigEntry<T> {
 				builder.append(s).append(", ");
 				lineAmount += s.length()+2;
 			}
-			builder.setLength(builder.length()-2);
+			if(lines.length > 0) {
+				builder.setLength(builder.length()-2);
+			}
 			return builder.toString();
 		}
 		StringJoiner joiner = new StringJoiner(policy == MultilinePolicy.ALWAYS_MULTILINE ? ", \n" : ", ");

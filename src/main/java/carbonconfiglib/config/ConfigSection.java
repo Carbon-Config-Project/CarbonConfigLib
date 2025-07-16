@@ -7,6 +7,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import carbonconfiglib.api.IConfigSerializer;
 import carbonconfiglib.api.IEntrySettings;
+import carbonconfiglib.api.IEntrySettings.TranslatedComment;
+import carbonconfiglib.api.IEntrySettings.TranslatedKey;
 import carbonconfiglib.config.ConfigEntry.ArrayValue;
 import carbonconfiglib.config.ConfigEntry.BoolValue;
 import carbonconfiglib.config.ConfigEntry.DoubleValue;
@@ -62,6 +64,19 @@ public class ConfigSection {
 		return this;
 	}
 	
+	public ConfigSection setTranslationKey(String translationKey) {
+		return addSettings(new TranslatedKey(translationKey));
+	}
+	
+	public ConfigSection setTranslationComment(String translationKey) {
+		return addSettings(new TranslatedComment(translationKey));
+	}
+	
+	public ConfigSection addSettings(IEntrySettings settings) {
+		this.settings = IEntrySettings.merge(this.settings, settings);
+		return this;
+	}
+	
 	public ConfigSection setSettings(IEntrySettings settings) {
 		this.settings = settings;
 		return this;
@@ -80,7 +95,7 @@ public class ConfigSection {
 	}
 	
 	void parseComment(String...comment) {
-		if(comment != null) return;
+		if(this.comment != null) return;
 		this.comment = Helpers.validateComments(comment);
 	}
 	
@@ -275,6 +290,20 @@ public class ConfigSection {
 	
 	public String[] getComment() {
 		return comment;
+	}
+	
+	public String getTranslationKey() {
+		TranslatedKey comment = settings == null ? null : settings.get(TranslatedKey.class);
+		return comment == null ? null : comment.getTranslationKey();
+	}
+	
+	public String getTranslationComment() {
+		TranslatedComment comment = settings == null ? null : settings.get(TranslatedComment.class);
+		return comment == null ? null : comment.getTranslationKey();
+	}
+	
+	public <S extends IEntrySettings> S getSetting(Class<S> clz) {
+		return settings == null ? null : settings.get(clz);
 	}
 	
 	public IEntrySettings getSettings() {
