@@ -56,7 +56,7 @@ public class SimpleTest {
 		ARRAY = testSection.addArray("ArrayTest", new String[] {"Testing1", "Testing2", "Testing3", "Testing4", "Testing5", "Testing6", "Testing7", "Testing8", "Testing9", "Testing10"}, "Testing the Array");
 		ENUMS = testSection.addEnum("EnumTest", AutomationType.AUTO_LOAD, AutomationType.class, "Testing the Enum");
 		PARSED = testSection.addParsed("ParseTest", new TestingValue(), TestingValue.createSerializer());
-		testSection.addParsedArray("MultilineTest", MultiArrayValue.defaultValue(), MultiArrayValue.createSerializer());
+		testSection.addParsedArray("MultilineTest", MultiArrayValue.defaultValue(), MultiArrayValue.createReflectionSerializer());
 		testSection.addParsedArray("MultiCompoundTest", MultiCompound.defaultValues(), MultiCompound.createSerializer());
 		ConfigHandler handler = WATCHER.createConfig(config, ConfigSettings.withLinePolicy(MultilinePolicy.MULTILINE_IF_TO_LONG));
 		handler.register();

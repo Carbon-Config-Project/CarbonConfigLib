@@ -40,6 +40,15 @@ public class MultiArrayValue
 		this(false, 5, createList());
 	}
 	
+	public MultiArrayValue(ParsedMap data) {
+		this.main = data.getOrThrow("main", Boolean.class);
+		this.count = data.getOrThrow("count", Integer.class);
+		values = new ObjectArrayList<>();
+		for(ParsedList list : data.getOrThrow("values", ParsedList.class).typedIterator(ParsedList.class)) {
+			values.add(list.collect(String.class, new ObjectArrayList<>()));
+		}
+	}
+	
 	public MultiArrayValue(boolean main, int count, List<List<String>> values) {
 		this.main = main;
 		this.count = count;
@@ -79,12 +88,32 @@ public class MultiArrayValue
 	}
 	
 	public static IConfigSerializer<MultiArrayValue> createSerializer() {
-		CompoundBuilder builder = new CompoundBuilder().setNewLined(true);
-		builder.simple("main", EntryDataType.BOOLEAN).finish();
-		builder.simple("count", EntryDataType.INTEGER).finish();
-		builder.list("values", ListBuilder.list(ListBuilder.of(EntryDataType.STRING).build(false)).build(true)).finish();
+		CompoundBuilder builder = new CompoundBuilder()
+				.setNewLined(true)
+				.simple("main", EntryDataType.BOOLEAN)
+				.simple("count", EntryDataType.INTEGER)
+				.listList("values", ListBuilder.of(EntryDataType.STRING).build(false), true);
 		return IConfigSerializer.noSync(builder.build(), new MultiArrayValue(), MultiArrayValue::parse, MultiArrayValue::serialize);
 	}
+	
+	public static IConfigSerializer<MultiArrayValue> createSimpleSerializer() {
+		CompoundBuilder builder = new CompoundBuilder()
+				.setNewLined(true)
+				.simple("main", EntryDataType.BOOLEAN)
+				.simple("count", EntryDataType.INTEGER)
+				.listList("values", ListBuilder.of(EntryDataType.STRING).build(false), true);
+		return IConfigSerializer.simple(builder.build(), new MultiArrayValue(), MultiArrayValue::new, MultiArrayValue::serialize);
+	}
+	
+	public static IConfigSerializer<MultiArrayValue> createReflectionSerializer() {
+		CompoundBuilder builder = new CompoundBuilder()
+				.setNewLined(true)
+				.simple("main", EntryDataType.BOOLEAN)
+				.simple("count", EntryDataType.INTEGER)
+				.listList("values", ListBuilder.of(EntryDataType.STRING).build(false), true);
+		return IConfigSerializer.reflectNoSync(builder.build(), new MultiArrayValue());
+	}
+	
 	
 	public ParsedMap serialize() {
 		ParsedMap map = new ParsedMap();

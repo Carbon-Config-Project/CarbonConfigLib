@@ -10,7 +10,6 @@ import carbonconfiglib.utils.ParsedCollections.ParsedList;
 import carbonconfiglib.utils.ParsedCollections.ParsedMap;
 import carbonconfiglib.utils.structure.IStructuredData.EntryDataType;
 import carbonconfiglib.utils.structure.StructureCompound.CompoundBuilder;
-import carbonconfiglib.utils.structure.StructureList.ListBuilder;
 import speiger.src.collections.objects.lists.ObjectArrayList;
 import speiger.src.collections.objects.maps.impl.hash.Object2ObjectLinkedOpenHashMap;
 
@@ -59,13 +58,12 @@ public class MultiCompound
 	public static IConfigSerializer<MultiCompound> createSerializer() {
 		CompoundBuilder innerBuilder = new CompoundBuilder().setNewLined(false);
 		for(int i = 0;i<5;i++) {
-			innerBuilder.simple(VALUES[i], EntryDataType.INTEGER).finish();
+			innerBuilder.simple(VALUES[i], EntryDataType.INTEGER);
 		}
-		
-		CompoundBuilder builder = new CompoundBuilder().setNewLined(true);
-		builder.simple("main", EntryDataType.BOOLEAN).finish();
-		builder.simple("count", EntryDataType.INTEGER).finish();
-		builder.list("maps", ListBuilder.object(innerBuilder.build(), MultiCompound::parseMap, ParsedMap::new).build(true)).finish();
+		CompoundBuilder builder = new CompoundBuilder().setNewLined(true)
+				.simple("main", EntryDataType.BOOLEAN)
+				.simple("count", EntryDataType.INTEGER)
+				.objectList("maps", innerBuilder.build(), true, MultiCompound::parseMap, ParsedMap::new);
 		return IConfigSerializer.noSync(builder.build(), new MultiCompound(), MultiCompound::parse, MultiCompound::serialize);
 	}
 	
@@ -78,7 +76,6 @@ public class MultiCompound
 		}
 		return ParseResult.success(output);
 	}
-	
 	
 	public static ParseResult<MultiCompound> parse(ParsedMap map) {
 		ParseResult<Boolean> main = map.getOrError("main", Boolean.class);

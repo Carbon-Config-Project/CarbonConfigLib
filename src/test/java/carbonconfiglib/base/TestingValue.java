@@ -9,7 +9,6 @@ import carbonconfiglib.utils.ParsedCollections.ParsedList;
 import carbonconfiglib.utils.ParsedCollections.ParsedMap;
 import carbonconfiglib.utils.structure.IStructuredData.EntryDataType;
 import carbonconfiglib.utils.structure.StructureCompound.CompoundBuilder;
-import carbonconfiglib.utils.structure.StructureList.ListBuilder;
 import speiger.src.collections.objects.lists.ObjectArrayList;
 
 /**
@@ -45,11 +44,12 @@ public class TestingValue {
 	}
 	
 	public static IConfigSerializer<TestingValue> createSerializer() {
-		CompoundBuilder builder = new CompoundBuilder().setNewLined(true);
-		builder.simple("Name", EntryDataType.STRING).finish();
-		builder.simple("Year", EntryDataType.INTEGER).finish();
-		builder.simple("Fluffyness", EntryDataType.DOUBLE).finish();
-		builder.list("Counter", ListBuilder.of(EntryDataType.STRING).build(false)).finish();
+		CompoundBuilder builder = new CompoundBuilder()
+				.setNewLined(true)
+				.simple("Name", EntryDataType.STRING)
+				.simple("Year", EntryDataType.INTEGER)
+				.simple("Fluffyness", EntryDataType.DOUBLE)
+				.listSimple("Counter", EntryDataType.STRING, false);
 		return IConfigSerializer.noSync(builder.build(), new TestingValue(), TestingValue::parse, TestingValue::serialize);
 	}
 	
@@ -79,9 +79,7 @@ public class TestingValue {
 		map.put("Name", name);
 		map.put("Year", year);
 		map.put("Fluffyness", fluffyness);
-		ParsedList list = new ParsedList();
-		this.list.forEach(list::add);
-		map.put("Counter", list);
+		map.put("Counter", new ParsedList(list));
 		return map;
 	}
 }
