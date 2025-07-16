@@ -81,7 +81,7 @@ public interface IStructuredData
 		ENUM,
 		CUSTOM(true);
 		
-		SimpleData simple;
+		final SimpleData simple;
 		
 		private EntryDataType() { this(false); }
 		private EntryDataType(boolean custom) {

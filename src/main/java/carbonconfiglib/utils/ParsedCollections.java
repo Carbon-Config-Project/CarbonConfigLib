@@ -5,7 +5,9 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 
+import carbonconfiglib.utils.structure.StructureCompound.CompoundData;
 import speiger.src.collections.objects.lists.ObjectArrayList;
 import speiger.src.collections.objects.lists.ObjectList;
 import speiger.src.collections.objects.maps.interfaces.Object2ObjectMap;
@@ -103,7 +105,10 @@ public class ParsedCollections
 			output.addAll((Collection<? extends T>)objects);
 			return output;
 		}
-
+		
+		public Iterable<Object> objectIterator() {
+			return objects;
+		}
 		
 		public <T> Iterable<T> typedIterator(Class<T> type) {
 			return () -> new Iterator<T>() {
@@ -139,6 +144,14 @@ public class ParsedCollections
 			putAll(c);
 		}
 		
+		public <T> ParsedMap(Iterable<T> keys, Function<T, Object> valueGenerator) {
+			putAll(keys, valueGenerator);
+		}
+		
+		public <T> ParsedMap(T[] keys, Function<T, Object> valueGenerator) {
+			putAll(keys, valueGenerator);
+		}
+		
 		public void put(String key, Object obj) {
 			parsed.put(key, obj);
 		}
@@ -147,8 +160,32 @@ public class ParsedCollections
 			parsed.putAll(c);
 		}
 		
+		public <T> void putAll(T[] keys, Function<T, Object> valueGenerator) {
+			for(T key : keys) {
+				parsed.put(key.toString(), valueGenerator.apply(key));
+			}			
+		}
+		
+		public <T> void putAll(Iterable<T> keys, Function<T, Object> valueGenerator) {
+			for(T key : keys) {
+				parsed.put(key.toString(), valueGenerator.apply(key));
+			}
+		}
+		
 		public Set<String> keySet() {
 			return Collections.unmodifiableSet(parsed.keySet());
+		}
+		
+		public ParseResult<Object> validate(CompoundData data) {
+			for(String key : data.getKeys()) {
+				Object obj = parsed.get(key);
+				if(obj instanceof ParseResult) {
+					ParseResult<?> result = (ParseResult<?>)obj;
+					if(result.hasError()) return result.onlyError();
+				}
+				else if(obj == null) return ParseResult.error(NullPointerException::new, "Entry ["+key+"] is null");
+			}
+			return ParseResult.success(null);
 		}
 		
 		@SuppressWarnings("unchecked")
@@ -158,6 +195,15 @@ public class ParsedCollections
 				obj = ((ParseResult<Object>)obj).getValue();
 			}
 			return type.isInstance(obj) ? type.cast(obj) : null;
+		}
+		
+		@SuppressWarnings("unchecked")
+		public <T> T getOrThrow(String key, Class<T> type) {
+			Object obj = parsed.get(key);
+			if(obj instanceof ParseResult) {
+				obj = ((ParseResult<Object>)obj).getValue();
+			}
+			return type.cast(obj);
 		}
 		
 		public <T> ParseResult<T> getOrError(String key, Class<T> type) {

@@ -47,6 +47,7 @@ public class StructureList
 		public ListData asList() { return this; }
 		public boolean isNewLined() { return isNewLined; }
 		public IStructuredData getType() { return type.getType(); }
+		IWritableListEntry getEntry() { return (IWritableListEntry)type; }
 		
 		public ParsedList parse(String data) {
 			ParsedList list = new ParsedList();
@@ -62,10 +63,6 @@ public class StructureList
 			List<String> output = new ObjectArrayList<>();
 			type.serialize(data, output, allowMultine, indent+1);
 			return Helpers.mergeCompoundArray(output, isNewLined && allowMultine, indent);
-		}
-		
-		public IStructuredData getFormat() {
-			return type.getType();
 		}
 		
 		public List<Suggestion> getSuggestions(Predicate<Suggestion> suggestion) {
@@ -248,7 +245,7 @@ public class StructureList
 		@Override
 		public void addSuggestions(ISuggestionProvider... providers) { this.providers.addAll(providers); }
 		
-		private static ListEntry<?> create(EntryDataType type) {
+		static ListEntry<?> create(EntryDataType type) {
 			switch(type) {
 				case BOOLEAN: return new ListEntry<>(type.toSimpleType(), Helpers::parseBoolean, String::valueOf);
 				case INTEGER: return new ListEntry<>(type.toSimpleType(), Helpers::parseInt, Helpers::fuzzyIntegerToString);

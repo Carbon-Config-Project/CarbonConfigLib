@@ -15,7 +15,11 @@ import carbonconfiglib.utils.ParsedCollections.ParsedList;
 import carbonconfiglib.utils.ParsedCollections.ParsedMap;
 import carbonconfiglib.utils.structure.IStructuredData.EntryDataType;
 import carbonconfiglib.utils.structure.IStructuredData.SimpleData;
+import carbonconfiglib.utils.structure.StructureList.CompoundWrapper;
+import carbonconfiglib.utils.structure.StructureList.IWritableListEntry;
 import carbonconfiglib.utils.structure.StructureList.ListData;
+import carbonconfiglib.utils.structure.StructureList.ListEntry;
+import carbonconfiglib.utils.structure.StructureList.ListWrapper;
 import speiger.src.collections.objects.lists.ObjectArrayList;
 import speiger.src.collections.objects.lists.ObjectList;
 import speiger.src.collections.objects.maps.impl.hash.Object2ObjectLinkedOpenHashMap;
@@ -156,8 +160,30 @@ public class StructureCompound
 			return start(new WrappedListEntry(name, entry));
 		}
 		
+		public CompoundBuilder listList(String name, ListData entry, boolean newLine) {
+			return start(new WrappedEditListEntry(name, new ListWrapper(entry), newLine));
+		}
+		
+		public CompoundBuilder listSimple(String name, EntryDataType type, boolean newLine) {
+			return start(new WrappedEditListEntry(name, ListEntry.create(type), newLine));
+		}
+		
+		public <T extends Enum<T>> CompoundBuilder listEnum(String name, Class<T> clz, boolean newLine) {
+			ListEntry<T> list = new ListEntry<>(EntryDataType.ENUM.toSimpleType(), E -> Helpers.parseEnum(clz, E), Enum::name);
+			list.addSuggestions(ISuggestionProvider.enums(clz));
+			return start(new WrappedEditListEntry(name, list, newLine));
+		}
+		
+		public <T> CompoundBuilder listVariant(String name, EntryDataType displayType, Class<T> type, boolean newLine, Function<String, ParseResult<T>> parse, Function<T, String> serialize) {
+			return start(new WrappedEditListEntry(name, new ListEntry<>(SimpleData.variant(displayType, type), parse, serialize), newLine));
+		}
+		
 		public <T> CompoundBuilder object(String name, CompoundData data, Function<ParsedMap, ParseResult<T>> parse, Function<T, ParsedMap> serialize) {
 			return start(new WrappedCompoundEntry<>(name, data, parse, serialize));
+		}
+		
+		public <T> CompoundBuilder objectList(String name, CompoundData data, boolean newLine, Function<ParsedMap, ParseResult<T>> parse, Function<T, ParsedMap> serialize) {
+			return start(new WrappedEditListEntry(name, new CompoundWrapper<>(data, parse, serialize), newLine));
 		}
 		
 		public CompoundBuilder addSuggestions(ISuggestionProvider... providers) {
@@ -181,7 +207,7 @@ public class StructureCompound
 		}
 		
 		private CompoundBuilder start(IWritableCompoundEntry entry) {
-			if(current != null) throw new IllegalStateException("Can't start another entry without finishing the previous one");
+			if(current != null) result.entries.put(current.getName(), current);
 			this.current = entry;
 			return this;
 		}
@@ -191,6 +217,7 @@ public class StructureCompound
 			return this;
 		}
 		
+		@Deprecated
 		public CompoundBuilder finish() {
 			Objects.requireNonNull(current, "Can't finish a non existend entry");
 			result.entries.put(current.getName(), current);
@@ -199,7 +226,10 @@ public class StructureCompound
 		}
 		
 		public CompoundData build() {
-			if(current != null) throw new IllegalStateException("Can't build a ComponentStructure when a element is still being built");
+			if(current != null) {
+				result.entries.put(current.getName(), current);
+				current = null;
+			}
 			CompoundData out = result;
 			result = null;
 			return out;
@@ -220,6 +250,51 @@ public class StructureCompound
 		public void setForced(boolean value);
 		public void addSuggestions(ISuggestionProvider... providers);
 		public void setComments(String...comments);
+	}
+	
+	static class WrappedEditListEntry implements IWritableCompoundEntry {
+		String name;
+		String[] comments;
+		IWritableListEntry entry;
+		boolean newLine;
+		
+		public WrappedEditListEntry(String name, IWritableListEntry entry, boolean newLine) {
+			this.name = name;
+			this.entry = entry;
+			this.newLine = newLine;
+		}
+		
+		@Override
+		public IStructuredData getType() { return entry.getType(); }
+		@Override
+		public boolean isForced() { return entry.isForced(); }
+		@Override
+		public String[] getComment() { return comments; }
+		@Override
+		public String getName() { return name; }
+		
+		@Override
+		public void parse(Map<String, String> input, ParsedMap output) {
+			ParsedList list = new ParsedList();
+			entry.parse(ObjectArrayList.wrap(Helpers.splitCompoundArray(Helpers.removeLayer(input.getOrDefault(name, "").trim(), 0))), list);
+			output.put(name, ParsedList.unwrap(list));
+		}
+		
+		@Override
+		public void serialize(ParsedMap input, Map<String, String> result, boolean allowMultiline, int indent) {
+			List<String> output = new ObjectArrayList<>();
+			entry.serialize(input.get(name, ParsedList.class), output, newLine && allowMultiline, indent+1);
+			result.put(name, Helpers.mergeCompoundArray(output, newLine && allowMultiline, indent));
+		}
+		
+		@Override
+		public ObjectList<ISuggestionProvider> getSuggestions() { return entry.getSuggestions(); }
+		@Override
+		public void setForced(boolean value) { entry.setForced(value); }
+		@Override
+		public void addSuggestions(ISuggestionProvider... providers) { entry.addSuggestions(providers); }
+		@Override
+		public void setComments(String... comments) { this.comments = comments; }
 	}
 	
 	static class WrappedListEntry implements IWritableCompoundEntry {
