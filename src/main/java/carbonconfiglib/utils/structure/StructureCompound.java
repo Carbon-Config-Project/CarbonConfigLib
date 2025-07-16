@@ -7,6 +7,8 @@ import java.util.function.BiPredicate;
 import java.util.function.Function;
 
 import carbonconfiglib.api.IEntrySettings;
+import carbonconfiglib.api.IEntrySettings.TranslatedComment;
+import carbonconfiglib.api.IEntrySettings.TranslatedKey;
 import carbonconfiglib.api.ISuggestionProvider;
 import carbonconfiglib.api.ISuggestionProvider.Suggestion;
 import carbonconfiglib.utils.Helpers;
@@ -45,6 +47,7 @@ public class StructureCompound
 {
 	public static class CompoundData implements IStructuredData {
 		Map<String, ICompoundEntry> entries = new Object2ObjectLinkedOpenHashMap<>();
+		Map<String, IEntrySettings> entrySettings = new Object2ObjectLinkedOpenHashMap<>();
 		IEntrySettings settings;
 		boolean isNewLined = true;
 		
@@ -110,6 +113,22 @@ public class StructureCompound
 		public String[] getComments(String name) {
 			ICompoundEntry entry = entries.get(name);
 			return entry == null ? null : entry.getComment();
+		}
+		
+		public IEntrySettings getEntrySetting(String name) {
+			return entrySettings.get(name);
+		}
+		
+		public String getTranslationKey(String name) {
+			IEntrySettings settings = entrySettings.get(name);
+			TranslatedKey comment = settings == null ? null : settings.get(TranslatedKey.class);
+			return comment == null ? null : comment.getTranslationKey();
+		}
+		
+		public String getTranslationComment(String name) {
+			IEntrySettings settings = entrySettings.get(name);
+			TranslatedComment comment = settings == null ? null : settings.get(TranslatedComment.class);
+			return comment == null ? null : comment.getTranslationKey();
 		}
 		
 		public List<Suggestion> getSuggestions(String name, BiPredicate<String, String> filter) {
@@ -198,6 +217,29 @@ public class StructureCompound
 		
 		public CompoundBuilder forceSuggestions(boolean value) {
 			Objects.requireNonNull(current, "No Entry to configure").setForced(value);
+			return this;
+		}
+		
+		public CompoundBuilder setTranslationKey(String translationKey) {
+			return addEntrySetting(new TranslatedKey(translationKey));
+		}
+		
+		public CompoundBuilder setTranslationComment(String translationKey) {
+			return addEntrySetting(new TranslatedComment(translationKey));
+		}
+		
+		public CompoundBuilder addEntrySetting(IEntrySettings settings) {
+			result.entrySettings.compute(Objects.requireNonNull(current, "No Entry to configure").getName(), (K, V) -> IEntrySettings.merge(V, settings));
+			return this;
+		}
+		
+		public CompoundBuilder setEntrySettings(IEntrySettings settings) {
+			result.entrySettings.put(Objects.requireNonNull(current, "No Entry to configure").getName(), settings);
+			return this;
+		}
+		
+		public CompoundBuilder addSetting(IEntrySettings settings) {
+			result.settings = IEntrySettings.merge(result.settings, settings);
 			return this;
 		}
 		

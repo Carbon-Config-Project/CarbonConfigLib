@@ -128,13 +128,13 @@ public class Helpers {
 			if(value == opener) recursion++;
 			else if(value == closer) recursion--;
 			else if(value == splitter && recursion == 0) {
-				result.add(builder.toString());
+				result.add(builder.toString().trim());
 				builder.setLength(0);
 				continue;
 			}
 			builder.append(value);
 		}
-		if(builder.length() > 0) result.add(builder.toString());
+		if(builder.length() > 0) result.add(builder.toString().trim());
 		
 		return trimArray(result.toArray(new String[result.size()]));
 	}

@@ -54,6 +54,7 @@ public interface IStructuredData
 		public EntryDataType getType() { return dataType; }
 		public Class<?> getVariant() { return variant; }
 		public boolean isVariant() { return variant != null; }
+		public SimpleData addSettings(IEntrySettings settings) { return new SimpleData(dataType, variant, IEntrySettings.merge(this.settings, settings)); }
 		public SimpleData withSettings(IEntrySettings settings) { return new SimpleData(dataType, variant, settings); }
 		
 		@Override

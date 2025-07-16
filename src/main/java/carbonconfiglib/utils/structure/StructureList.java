@@ -104,6 +104,11 @@ public class StructureList
 			return this;
 		}
 		
+		public ListBuilder addSetting(IEntrySettings settings) {
+			result.settings = IEntrySettings.merge(result.settings, settings);
+			return this;
+		}
+		
 		public ListBuilder setSettings(IEntrySettings settings) {
 			result.settings = settings;
 			return this;
@@ -244,7 +249,7 @@ public class StructureList
 		public void setForced(boolean value) { this.forcedSuggestions = value; }
 		@Override
 		public void addSuggestions(ISuggestionProvider... providers) { this.providers.addAll(providers); }
-		
+
 		static ListEntry<?> create(EntryDataType type) {
 			switch(type) {
 				case BOOLEAN: return new ListEntry<>(type.toSimpleType(), Helpers::parseBoolean, String::valueOf);
