@@ -1,6 +1,7 @@
 package carbonconfiglib.config;
 
 import java.util.UUID;
+import java.util.function.BinaryOperator;
 import java.util.function.Supplier;
 
 import carbonconfiglib.api.buffer.IReadBuffer;
@@ -38,6 +39,14 @@ public class SyncedConfig<T extends ConfigEntry<?>>
 	
 	public T get(UUID id) {
 		return mappedEntries.get(id);
+	}
+
+	public T getDefault() {
+		return mappedEntries.getDefaultReturnValue(); 
+	}
+	
+	public T getMerged(UUID id, BinaryOperator<T> function) {
+		return function.apply(mappedEntries.getDefaultReturnValue(), mappedEntries.apply(id));
 	}
 	
 	public void onSync(IReadBuffer buffer, UUID owner) {

@@ -1,8 +1,11 @@
 package carbonconfiglib.config;
 
+import java.util.Collection;
 import java.util.Set;
+import java.util.function.Consumer;
 
 import carbonconfiglib.config.ConfigEntry.ArrayConfigEntry;
+import carbonconfiglib.config.ConfigEntry.CollectionConfigEntry;
 import speiger.src.collections.objects.sets.ObjectOpenHashSet;
 
 /**
@@ -21,19 +24,17 @@ import speiger.src.collections.objects.sets.ObjectOpenHashSet;
  * limitations under the License.
  */
 public class HashSetCache<T> {
-    public final ArrayConfigEntry<T> configEntry;
     private final Set<T> cache = new ObjectOpenHashSet<>();
-    
-    private HashSetCache(ArrayConfigEntry<T> configEntry, ConfigHandler configHandler) {
-        this.configEntry = configEntry;
+    private final Consumer<Consumer<T>> provider;
+
+    private HashSetCache(ConfigHandler configHandler, Consumer<Consumer<T>> provider) {
+        this.provider = provider;
         configHandler.addLoadedListener(this::reload);
     }
     
     private void reload() {
         cache.clear();
-        for (T val : configEntry.getValue()) {
-            cache.add(val);
-        }
+        provider.accept(cache::add);
     }
     
     public boolean contains(T value) {
@@ -41,6 +42,14 @@ public class HashSetCache<T> {
     }
     
     public static <T> HashSetCache<T> create(ArrayConfigEntry<T> configEntry, ConfigHandler configHandler) {
-        return new HashSetCache<>(configEntry, configHandler);
+        return new HashSetCache<>(configHandler, T -> {
+            for (T val : configEntry.getValue()) {
+                T.accept(val);
+            }
+        });
+    }
+
+    public static <T, E extends Collection<T>> HashSetCache<T> create(CollectionConfigEntry<T, E> configEntry, ConfigHandler configHandler) {
+        return new HashSetCache<>(configHandler, T -> configEntry.getValue().forEach(T));
     }
 }
