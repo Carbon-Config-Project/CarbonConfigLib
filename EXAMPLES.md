@@ -26,6 +26,23 @@ public static BoolValue DO_STUFF;
 	}
 ```
 
+## Implement Translation Data (For GUI's)
+
+How to add Translation Keys into the config for UI's so they can be auto translated
+
+```java
+	public static BoolValue DO_STUFF;
+
+	public static void main(String...args) {
+		Config config = new Config("example");
+		ConfigSection section = config.add("general");
+		DO_STUFF = section.addBool("Do Stuff?", false).setTranslationKey("MyTranslationKey").setTranslationValue("MyTranslationValue");
+		CONFIG = WATCHER.create(config);
+		CONFIG.register();
+	}
+```
+
+
 ## Implement Auto Reloading
 
 To Implement Auto Reload functionality it is simply required to process file system changes.    
@@ -266,6 +283,17 @@ public static ParsedValue<TestingValue> PARSED;
 				this("Testing", 2000, 512.2423);
 			}
 			
+			/**
+			 * Constructor that uses the simple approach.
+			 * Any Exception thrown is caught by the serializer and marked as parsing failure
+			 * ParsedMap has option to safely parse data as well but this is the simplest approach
+			 */
+			public TestingValue(ParsedMap data) {
+				name = data.getOrThrow("Name", String.class);
+				year = data.getOrThrow("Year", Integer.class);
+				fluffyness = data.getOrThrow("Fluffyness", Double.class);
+			}
+			
 			public TestingValue(String name, int year, double fluffyness) {
 				this.name = name;
 				this.year = year;
@@ -279,7 +307,6 @@ public static ParsedValue<TestingValue> PARSED;
 			 * A entry can be started with the "simple/variant/enum/nested" function.
 			 * After that optionally a "addSuggestion" or "setComments" or "forceSuggestions" can be used to expand on information for each.
 			 * Though these are mainly for GUI implementations specifically.
-			 * And then a "finish" function must be used to complete an entry.
 			 * 
 			 * The nested starter is used for allowing to append custom data structures such as other compounds or list. 
 			 * (Recursion is needed)
@@ -289,19 +316,18 @@ public static ParsedValue<TestingValue> PARSED;
 			 */
 			public static IConfigSerializer<TestingValue> createSerializer() {
 				CompoundBuilder builder = new CompoundBuilder().setNewLined(true);
-				builder.simple("Name", EntryDataType.STRING).finish();
-				builder.simple("Year", EntryDataType.INTEGER).finish();
-				builder.simple("Fluffyness", EntryDataType.DOUBLE).finish();
-				return IConfigSerializer.noSync(builder.build(), new TestingValue(), TestingValue::parse, TestingValue::serialize);
+				builder
+					.simple("Name", EntryDataType.STRING);
+					.simple("Year", EntryDataType.INTEGER);
+					.simple("Fluffyness", EntryDataType.DOUBLE);
+				return IConfigSerializer.simple(builder.build(), new TestingValue(), TestingValue::new, TestingValue::serialize);
 			}
 			
 			/**
-			 * The Parsing function which requires a Parsing map to be used.
-			 * Using map.getOrError will simply return a ParseResult object of the defined type.
-			 * Either the result contains an error which can be due to the type not matching or the result not being present.
-			 * Or it contains the value parsed.
-			 * If an error is found simply redirect it as the returning function with onlyError or with "withDefault" or other options.
-			 * This is up to you how it is handled.
+			 * The Advanced Parsing function that allows to also control the ParseResult with the failure.
+			 * By default the simple function will handle that and cover most cases you would ever want with this.
+			 * Reducing the Verboseness drastically.
+			 * This advanced version also asks you to handle the exceptions and errors and deal with them in a controlled manor.
 			 */
 			public static ParseResult<TestingValue> parse(ParsedMap map) {
 				ParseResult<String> name = map.getOrError("Name", String.class);
