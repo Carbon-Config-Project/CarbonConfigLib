@@ -14,6 +14,7 @@ import carbonconfiglib.api.IConfigSerializer;
 import carbonconfiglib.api.IEntrySettings;
 import carbonconfiglib.api.IEntrySettings.TranslatedComment;
 import carbonconfiglib.api.IEntrySettings.TranslatedKey;
+import carbonconfiglib.api.ILimitationSerializer;
 import carbonconfiglib.api.IReloadMode;
 import carbonconfiglib.api.ISuggestionProvider;
 import carbonconfiglib.api.ISuggestionProvider.Suggestion;
@@ -177,6 +178,7 @@ public abstract class ConfigEntry<T> {
 		return this;
 	}
 	
+	//TODO discard this with a proper system where replacements are done manually
 	final ConfigEntry<T> setLoaded() {
 		wasLoaded = true;
 		return this;
@@ -352,12 +354,12 @@ public abstract class ConfigEntry<T> {
 				builder.append(comment[i].replaceAll("\\R", indentation + "# "));
 			}
 		}
-		String limits = getLimitations();
-		if(limits != null && !limits.isEmpty()) {
-			if(builder.length() == 0) builder.append("\n");
-			builder.append(indentation);
-			builder.append("#").append('\u200b').append(" ");
-			builder.append(limits.replaceAll("\\R", indentation + "#\u200b "));
+		appendLimitation(getLimitations(), builder, indentation);
+		if(reload instanceof ILimitationSerializer) {
+			appendLimitation(((ILimitationSerializer)reload).getLimitation(), builder, indentation);
+		}
+		if(settings != null) {
+			settings.forEachType(ILimitationSerializer.class, T -> appendLimitation(T.getLimitation(), builder, indentation));
 		}
 		builder.append(indentation);
 		builder.append(getPrefix());
@@ -374,6 +376,16 @@ public abstract class ConfigEntry<T> {
 			builder.append(line);
 		}
 		return builder.toString();
+	}
+	
+	private final void appendLimitation(String input, StringBuilder builder, String indentation) {
+		if(input == null) return;
+		input = input.trim();
+		if(input.isEmpty()) return;
+		if(builder.length() == 0) builder.append("\n");
+		builder.append(indentation);
+		builder.append("#").append('\u200b').append(" ");
+		builder.append(input.replaceAll("\\R", indentation + "#\u200b "));
 	}
 	
 	public abstract void serialize(IWriteBuffer buffer);

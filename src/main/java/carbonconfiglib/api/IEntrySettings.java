@@ -2,6 +2,7 @@ package carbonconfiglib.api;
 
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 import speiger.src.collections.objects.lists.ObjectArrayList;
 import speiger.src.collections.objects.maps.interfaces.Object2ObjectMap;
@@ -23,6 +24,9 @@ import speiger.src.collections.objects.maps.interfaces.Object2ObjectMap;
  */
 public interface IEntrySettings {
 	public default <T> T get(Class<T> clz) { return clz.isInstance(this) ? clz.cast(this) : null; }
+	public default <T> void forEachType(Class<T> clz, Consumer<T> scanner) { 
+		if(clz.isInstance(this)) scanner.accept(clz.cast(this));
+	}
 	
 	public static IEntrySettings compound(IEntrySettings... settings) { return new CompoundEntrySettings(ObjectArrayList.wrap(settings)); }
 	public static IEntrySettings merge(IEntrySettings original, IEntrySettings toAdd) {
@@ -67,6 +71,13 @@ public interface IEntrySettings {
 		public <T> T get(Class<T> clz) {
 			IEntrySettings setting = settings.get(clz);
 			return setting == null ? null : clz.cast(setting);
+		}
+		
+		@Override
+		public <T> void forEachType(Class<T> clz, Consumer<T> scanner) {
+			for(IEntrySettings setting : settings.values()) {
+				setting.forEachType(clz, scanner);
+			}
 		}
 	}
 	

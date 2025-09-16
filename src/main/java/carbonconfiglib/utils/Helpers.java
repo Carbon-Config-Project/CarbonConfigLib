@@ -178,28 +178,28 @@ public class Helpers {
 	public static String fuzzyDoubleToString(Number number) {
 		return String.valueOf(number.doubleValue());
 	}
-	
+
 	/** Fuzzy Function since Auto Unboxing forces Integer Object Instances which crash when you insert a Short or Byte! */
 	public static String fuzzyIntegerToString(Number number) {
 		return String.valueOf(number.intValue());
 	}
-	
+
 	public static ParseResult<String> parseString(String value) {
 		return ParseResult.success(value);
 	}
-	
+
 	public static ParseResult<Boolean> parseBoolean(String value) {
 		try { return ParseResult.success(Boolean.parseBoolean(value)); }
 		catch (Exception e) { return ParseResult.error(value, e, "Couldn't parse Boolean"); }
 	}
-	
+
 	public static ParseResult<Integer> parseInt(String value) {
 		try { return ParseResult.success(Integer.parseInt(value)); }
 		catch (Exception e) { return ParseResult.error(value, e, "Couldn't parse Number"); }
 	}
 
 	public static ParseResult<Double> parseDouble(String value) {
-		try { return ParseResult.success(Double.parseDouble(value)); } 
+		try { return ParseResult.success(Double.parseDouble(value)); }
 		catch (Exception e) { return ParseResult.error(value, e, "Couldn't parse Number"); }
 	}
 	
