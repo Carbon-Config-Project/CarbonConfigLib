@@ -17,7 +17,7 @@ repositories {
 	maven { url = "https://jitpack.io" }
 }
 dependencies {
-	implementation 'com.github.Carbon-Config-Project:CarbonConfigLib:1.3.0'
+	implementation 'com.github.Carbon-Config-Project:CarbonConfigLib:1.4.0'
 }
 
 ```
@@ -82,4 +82,5 @@ A list of Features that Carbon Config supports.
   ``Some Configs are only there for the developers to debug things. CarbonConfig also supports Hidden Configs. These simply load their defaults and can only be changed by Manually Writing them into the Config File. Allowing for debug tools to be present yet not add extra clutter to the Config file that isn't wanted.``
 - **GUI Compatible**     
   ``While no Gui is provided by default it is written with having a GUI hooked into it in mind. The entire Config is written in a way were Guis can be hooked into the parsing/validation process and allow for customization without having to guess the data types or having to write magic to set values. If a value has to be set, it requests a string and the config itself is managing the parsing process and gives feedback of what went wrong.``
- 
+- **Translations**
+  ``Some Config UI's want to provide translation information as well. There are ways provided to set and read translation keys for both Entries and Comments``
