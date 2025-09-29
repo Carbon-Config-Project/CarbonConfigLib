@@ -13,6 +13,7 @@ public interface IRange
 		
 		public int min() { return min; }
 		public int max() { return max; }
+		public int length() { return max - min; }
 	}
 	
 	public static class DoubleRange implements IRange {
@@ -26,5 +27,6 @@ public interface IRange
 		
 		public double min() { return min; }
 		public double max() { return max; }
+		public double length() { return max - min; }
 	}
 }
