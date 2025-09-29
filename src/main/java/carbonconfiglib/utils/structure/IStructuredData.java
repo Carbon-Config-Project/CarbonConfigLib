@@ -3,6 +3,7 @@ package carbonconfiglib.utils.structure;
 import java.util.function.Function;
 
 import carbonconfiglib.api.IEntrySettings;
+import carbonconfiglib.api.IRange;
 import carbonconfiglib.utils.Helpers;
 import carbonconfiglib.utils.structure.StructureCompound.CompoundData;
 import carbonconfiglib.utils.structure.StructureList.ListData;
@@ -36,15 +37,18 @@ public interface IStructuredData
 		EntryDataType dataType;
 		Class<?> variant;
 		IEntrySettings settings;
+		IRange range;
 		
-		private SimpleData(EntryDataType dataType, Class<?> variant, IEntrySettings settings) {
+		private SimpleData(EntryDataType dataType, Class<?> variant, IEntrySettings settings, IRange range) {
 			this.dataType = dataType;
 			this.variant = variant;
 			this.settings = settings;
+			this.range = range;
 		}
 		
-		public static SimpleData variant(EntryDataType type, Class<?> variant) { return new SimpleData(type, variant, null); }
-		private static SimpleData of(EntryDataType type) { return new SimpleData(type, null, null); }
+		public static SimpleData variant(EntryDataType type, Class<?> variant) { return new SimpleData(type, variant, null, null); }
+		private static SimpleData of(EntryDataType type) { return new SimpleData(type, null, null, null); }
+		public static SimpleData of(EntryDataType type, IRange range) { return new SimpleData(type, null, null, range); }
 		
 		@Override
 		public StructureType getDataType() {return StructureType.SIMPLE; }
@@ -52,10 +56,12 @@ public interface IStructuredData
 		public IEntrySettings getSettings() { return settings; }
 		public SimpleData asSimple() { return this; }
 		public EntryDataType getType() { return dataType; }
+		public IRange getRange() { return range; }
 		public Class<?> getVariant() { return variant; }
 		public boolean isVariant() { return variant != null; }
-		public SimpleData addSettings(IEntrySettings settings) { return new SimpleData(dataType, variant, IEntrySettings.merge(this.settings, settings)); }
-		public SimpleData withSettings(IEntrySettings settings) { return new SimpleData(dataType, variant, settings); }
+		public SimpleData addSettings(IEntrySettings settings) { return new SimpleData(dataType, variant, IEntrySettings.merge(this.settings, settings), range); }
+		public SimpleData withSettings(IEntrySettings settings) { return new SimpleData(dataType, variant, settings, range); }
+		public SimpleData withRange(IRange range) { return new  SimpleData(dataType, variant, settings, range); }
 		
 		@Override
 		public void appendFormat(StringBuilder builder, boolean start) {
@@ -90,6 +96,7 @@ public interface IStructuredData
 		}
 		
 		public SimpleData toSimpleType() { return simple; }
+		public SimpleData withRange(IRange range) { return simple.withRange(range); }
 		public SimpleData toConfiguredType(IEntrySettings settings) { return settings == null ? simple : simple.withSettings(settings); }
 	}
 }

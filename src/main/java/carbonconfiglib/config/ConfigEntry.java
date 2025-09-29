@@ -15,6 +15,8 @@ import carbonconfiglib.api.IEntrySettings;
 import carbonconfiglib.api.IEntrySettings.TranslatedComment;
 import carbonconfiglib.api.IEntrySettings.TranslatedKey;
 import carbonconfiglib.api.ILimitationSerializer;
+import carbonconfiglib.api.IRange.DoubleRange;
+import carbonconfiglib.api.IRange.IntegerRange;
 import carbonconfiglib.api.IReloadMode;
 import carbonconfiglib.api.ISuggestionProvider;
 import carbonconfiglib.api.ISuggestionProvider.Suggestion;
@@ -585,7 +587,7 @@ public abstract class ConfigEntry<T> {
 		
 		@Override
 		public SimpleData getDataType() {
-			return EntryDataType.INTEGER.toSimpleType();
+			return EntryDataType.INTEGER.withRange(new IntegerRange(min, max));
 		}
 		
 		public int get() {
@@ -675,7 +677,7 @@ public abstract class ConfigEntry<T> {
 		
 		@Override
 		public SimpleData getDataType() {
-			return EntryDataType.DOUBLE.toSimpleType();
+			return EntryDataType.DOUBLE.withRange(new DoubleRange(min, max));
 		}
 		
 		public double get() {
