@@ -5,6 +5,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 
 import carbonconfiglib.api.IEntrySettings;
+import carbonconfiglib.api.IRange;
 import carbonconfiglib.api.ISuggestionProvider;
 import carbonconfiglib.api.ISuggestionProvider.Suggestion;
 import carbonconfiglib.utils.Helpers;
@@ -47,6 +48,7 @@ public class StructureList
 		public ListData asList() { return this; }
 		public boolean isNewLined() { return isNewLined; }
 		public IStructuredData getType() { return type.getType(); }
+		public IRange getRange() { return type.getRange(); }
 		IWritableListEntry getEntry() { return (IWritableListEntry)type; }
 		
 		public ParsedList parse(String data) {
@@ -132,6 +134,7 @@ public class StructureList
 	public static interface IListEntry {
 		public IStructuredData getType();
 		public boolean isForced();
+		public IRange getRange();
 		public void parse(List<String> input, ParsedList output);
 		public void serialize(ParsedList input, List<String> output, boolean allowMultine, int indent);
 		public ObjectList<ISuggestionProvider> getSuggestions();
@@ -140,6 +143,7 @@ public class StructureList
 	static interface IWritableListEntry extends IListEntry {
 		public void setForced(boolean value);
 		public void addSuggestions(ISuggestionProvider... providers);
+		public void withRange(IRange range);
 	}
 	
 	static class CompoundWrapper<T> implements IWritableListEntry {
@@ -158,6 +162,11 @@ public class StructureList
 		@Override
 		public boolean isForced() { return false; }
 		@Override
+		public ObjectList<ISuggestionProvider> getSuggestions() { return ObjectLists.empty(); }
+		@Override
+		public IRange getRange() { return null; }
+		
+		@Override
 		public void parse(List<String> input, ParsedList output) {
 			for(int i = 0,m=input.size();i<m;i++) {
 				output.add(parse.apply(data.parse(input.get(i))));
@@ -172,11 +181,11 @@ public class StructureList
 		}
 
 		@Override
-		public ObjectList<ISuggestionProvider> getSuggestions() { return ObjectLists.empty(); }
-		@Override
 		public void setForced(boolean value) { throw new UnsupportedOperationException("Not supported for nested wrappers"); }
 		@Override
 		public void addSuggestions(ISuggestionProvider... providers) { throw new UnsupportedOperationException("Not supported for nested wrappers"); }
+		@Override
+		public void withRange(IRange range) { throw new UnsupportedOperationException("Not supported for nested wrappers"); }
 	}
 	
 	static class ListWrapper implements IWritableListEntry {
@@ -190,6 +199,10 @@ public class StructureList
 		public IStructuredData getType() { return data; }
 		@Override
 		public boolean isForced() { return false; }
+		@Override
+		public IRange getRange() { return null; }
+		@Override
+		public ObjectList<ISuggestionProvider> getSuggestions() { return ObjectLists.empty(); }
 		@Override
 		public void parse(List<String> input, ParsedList output) {
 			for(int i = 0,m=input.size();i<m;i++) {
@@ -205,11 +218,11 @@ public class StructureList
 		}
 
 		@Override
-		public ObjectList<ISuggestionProvider> getSuggestions() { return ObjectLists.empty(); }
-		@Override
 		public void setForced(boolean value) { throw new UnsupportedOperationException("Not supported for nested wrappers"); }
 		@Override
 		public void addSuggestions(ISuggestionProvider... providers) { throw new UnsupportedOperationException("Not supported for nested wrappers"); }
+		@Override
+		public void withRange(IRange range) { throw new UnsupportedOperationException("Not supported for nested wrappers"); }
 	}
 	
 	static class ListEntry<T> implements IWritableListEntry {
@@ -218,6 +231,7 @@ public class StructureList
 		final Function<T, String> serialize;
 		final IStructuredData type;
 		boolean forcedSuggestions;
+		IRange range;
 		
 		public ListEntry(IStructuredData type, Function<String, ParseResult<T>> parse, Function<T, String> serialize) {
 			this.type = type;
@@ -231,6 +245,10 @@ public class StructureList
 		public boolean isForced() { return forcedSuggestions; }
 		@Override
 		public ObjectList<ISuggestionProvider> getSuggestions() { return providers.unmodifiable(); }
+		@Override
+		public IRange getRange() { return range; }
+
+		
 		@Override
 		public void parse(List<String> input, ParsedList output) {
 			for(int i = 0,m=input.size();i<m;i++) {
@@ -249,6 +267,8 @@ public class StructureList
 		public void setForced(boolean value) { this.forcedSuggestions = value; }
 		@Override
 		public void addSuggestions(ISuggestionProvider... providers) { this.providers.addAll(providers); }
+		@Override
+		public void withRange(IRange range) { this.range = range; }
 
 		static ListEntry<?> create(EntryDataType type) {
 			switch(type) {

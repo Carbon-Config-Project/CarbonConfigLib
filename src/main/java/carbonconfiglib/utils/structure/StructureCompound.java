@@ -9,6 +9,7 @@ import java.util.function.Function;
 import carbonconfiglib.api.IEntrySettings;
 import carbonconfiglib.api.IEntrySettings.TranslatedComment;
 import carbonconfiglib.api.IEntrySettings.TranslatedKey;
+import carbonconfiglib.api.IRange;
 import carbonconfiglib.api.ISuggestionProvider;
 import carbonconfiglib.api.ISuggestionProvider.Suggestion;
 import carbonconfiglib.utils.Helpers;
@@ -117,6 +118,11 @@ public class StructureCompound
 		
 		public IEntrySettings getEntrySetting(String name) {
 			return entrySettings.get(name);
+		}
+		
+		public IRange getRange(String name) {
+			ICompoundEntry entry = entries.get(name);
+			return entry == null ? null : entry.getRange();
 		}
 		
 		public String getTranslationKey(String name) {
@@ -283,6 +289,7 @@ public class StructureCompound
 		public boolean isForced();
 		public String[] getComment();
 		public String getName();
+		public IRange getRange();
 		public void parse(Map<String, String> data, ParsedMap output);
 		public void serialize(ParsedMap input, Map<String, String> output, boolean allowMultiline, int indent);
 		public ObjectList<ISuggestionProvider> getSuggestions();
@@ -292,6 +299,7 @@ public class StructureCompound
 		public void setForced(boolean value);
 		public void addSuggestions(ISuggestionProvider... providers);
 		public void setComments(String...comments);
+		public void withRange(IRange range);
 	}
 	
 	static class WrappedEditListEntry implements IWritableCompoundEntry {
@@ -314,6 +322,10 @@ public class StructureCompound
 		public String[] getComment() { return comments; }
 		@Override
 		public String getName() { return name; }
+		@Override
+		public ObjectList<ISuggestionProvider> getSuggestions() { return entry.getSuggestions(); }
+		@Override
+		public IRange getRange() { return entry.getRange(); }
 		
 		@Override
 		public void parse(Map<String, String> input, ParsedMap output) {
@@ -330,9 +342,9 @@ public class StructureCompound
 		}
 		
 		@Override
-		public ObjectList<ISuggestionProvider> getSuggestions() { return entry.getSuggestions(); }
-		@Override
 		public void setForced(boolean value) { entry.setForced(value); }
+		@Override
+		public void withRange(IRange range) { entry.withRange(range); }
 		@Override
 		public void addSuggestions(ISuggestionProvider... providers) { entry.addSuggestions(providers); }
 		@Override
@@ -358,6 +370,11 @@ public class StructureCompound
 		@Override
 		public String[] getComment() { return comments; }
 		@Override
+		public ObjectList<ISuggestionProvider> getSuggestions() { return ObjectLists.empty(); }
+		@Override
+		public IRange getRange() { return data.getRange(); }
+		
+		@Override
 		public void parse(Map<String, String> input, ParsedMap output) {
 			output.put(name, ParsedList.unwrap(data.parse(input.getOrDefault(name, ""))));
 		}
@@ -368,11 +385,11 @@ public class StructureCompound
 		}
 		
 		@Override
-		public ObjectList<ISuggestionProvider> getSuggestions() { return ObjectLists.empty(); }
-		@Override
 		public void setForced(boolean value) { throw new UnsupportedOperationException("Not supported for nested wrappers"); }
 		@Override
 		public void addSuggestions(ISuggestionProvider... providers) { throw new UnsupportedOperationException("Not supported for nested wrappers"); }
+		@Override
+		public void withRange(IRange range) { throw new UnsupportedOperationException("Not supported for nested wrappers"); }
 		@Override
 		public void setComments(String... comments) { this.comments = comments; }
 	}
@@ -400,6 +417,10 @@ public class StructureCompound
 		@Override
 		public String[] getComment() { return comments; }
 		@Override
+		public ObjectList<ISuggestionProvider> getSuggestions() { return ObjectLists.empty(); }
+		@Override
+		public IRange getRange() { return null; }
+		@Override
 		public void parse(Map<String, String> input, ParsedMap output) {
 			output.put(name, parse.apply(data.parse(input.getOrDefault(name, ""))));
 		}
@@ -410,11 +431,11 @@ public class StructureCompound
 		}
 		
 		@Override
-		public ObjectList<ISuggestionProvider> getSuggestions() { return ObjectLists.empty(); }
-		@Override
 		public void setForced(boolean value) { throw new UnsupportedOperationException("Not supported for nested wrappers"); }
 		@Override
 		public void addSuggestions(ISuggestionProvider... providers) { throw new UnsupportedOperationException("Not supported for nested wrappers"); }
+		@Override
+		public void withRange(IRange range) { throw new UnsupportedOperationException("Not supported for nested wrappers"); }
 		@Override
 		public void setComments(String... comments) { this.comments = comments; }
 	}
@@ -427,6 +448,7 @@ public class StructureCompound
 		final String name;
 		String[] comments;
 		boolean forcedSuggestions;
+		IRange range;
 		
 		public CompoundEntry(String name, IStructuredData type, Function<String, ParseResult<T>> parse, Function<T, String> serialize) {
 			this.name = name;
@@ -446,10 +468,14 @@ public class StructureCompound
 		@Override
 		public ObjectList<ISuggestionProvider> getSuggestions() { return providers.unmodifiable(); }
 		@Override
+		public IRange getRange() { return range; }
+		@Override
 		public void parse(Map<String, String> data, ParsedMap output) { output.put(name, parse.apply(data.getOrDefault(name, ""))); }
 		@Override
 		public void serialize(ParsedMap input, Map<String, String> output, boolean allowMultiline, int indent) { output.put(name, serialize.apply(input.getUnsafe(name))); }
 		
+		@Override
+		public void withRange(IRange range) { this.range = range; }
 		@Override
 		public void setForced(boolean value) { this.forcedSuggestions = value; }
 		@Override
