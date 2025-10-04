@@ -14,7 +14,9 @@ import carbonconfiglib.api.ILogger;
 import carbonconfiglib.config.ConfigEntry.ArrayValue;
 import carbonconfiglib.config.ConfigEntry.BoolValue;
 import carbonconfiglib.config.ConfigEntry.DoubleValue;
+import carbonconfiglib.config.ConfigEntry.FloatValue;
 import carbonconfiglib.config.ConfigEntry.IntValue;
+import carbonconfiglib.config.ConfigEntry.LongValue;
 import carbonconfiglib.config.ConfigEntry.StringValue;
 import carbonconfiglib.config.ConfigEntry.TempValue;
 import carbonconfiglib.utils.AutomationType;
@@ -77,6 +79,8 @@ public final class ConfigHandler {
 		this.proxy = proxy;
 		this.type = type;
 		parsers.put('I', IntValue::parse);
+		parsers.put('L', LongValue::parse);
+		parsers.put('F', FloatValue::parse);
 		parsers.put('D', DoubleValue::parse);
 		parsers.put('B', BoolValue::parse);
 		parsers.put('S', StringValue::parse);

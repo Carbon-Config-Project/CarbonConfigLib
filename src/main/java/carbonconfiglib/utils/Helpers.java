@@ -169,9 +169,22 @@ public class Helpers {
 	public static int clamp(int value, int min, int max) {
 		return Math.min(Math.max(value, min), max);
 	}
+	
+	public static long clamp(long value, long min, long max) {
+		return Math.min(Math.max(value, min), max);
+	}
 
+	public static float clamp(float value, float min, float max) {
+		return Math.min(Math.max(value, min), max);
+	}
+	
 	public static double clamp(double value, double min, double max) {
 		return Math.min(Math.max(value, min), max);
+	}
+	
+	/** Fuzzy Function since Auto Unboxing forces Float Object Instances which crash when you insert a Float! */
+	public static String fuzzyFloatToString(Number number) {
+		return String.valueOf(number.floatValue());
 	}
 	
 	/** Fuzzy Function since Auto Unboxing forces Double Object Instances which crash when you insert a Float! */
@@ -182,6 +195,11 @@ public class Helpers {
 	/** Fuzzy Function since Auto Unboxing forces Integer Object Instances which crash when you insert a Short or Byte! */
 	public static String fuzzyIntegerToString(Number number) {
 		return String.valueOf(number.intValue());
+	}
+	
+	/** Fuzzy Function since Auto Unboxing forces Long Object Instances which crash when you insert a Short or Byte! */
+	public static String fuzzyLongToString(Number number) {
+		return String.valueOf(number.longValue());
 	}
 
 	public static ParseResult<String> parseString(String value) {
@@ -197,7 +215,17 @@ public class Helpers {
 		try { return ParseResult.success(Integer.parseInt(value)); }
 		catch (Exception e) { return ParseResult.error(value, e, "Couldn't parse Number"); }
 	}
-
+	
+	public static ParseResult<Long> parseLong(String value) {
+		try { return ParseResult.success(Long.parseLong(value)); }
+		catch (Exception e) { return ParseResult.error(value, e, "Couldn't parse Number"); }
+	}
+	
+	public static ParseResult<Float> parseFloat(String value) {
+		try { return ParseResult.success(Float.parseFloat(value)); }
+		catch (Exception e) { return ParseResult.error(value, e, "Couldn't parse Number"); }
+	}
+	
 	public static ParseResult<Double> parseDouble(String value) {
 		try { return ParseResult.success(Double.parseDouble(value)); }
 		catch (Exception e) { return ParseResult.error(value, e, "Couldn't parse Number"); }

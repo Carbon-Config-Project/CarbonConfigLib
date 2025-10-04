@@ -83,6 +83,8 @@ public interface IStructuredData
 	public static enum EntryDataType {
 		BOOLEAN,
 		INTEGER,
+		LONG,
+		FLOAT,
 		DOUBLE,
 		STRING,
 		ENUM,
