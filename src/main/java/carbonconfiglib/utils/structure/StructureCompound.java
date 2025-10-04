@@ -487,6 +487,8 @@ public class StructureCompound
 			switch(type) {
 				case BOOLEAN: return new CompoundEntry<>(name, type.toSimpleType(), Helpers::parseBoolean, String::valueOf);
 				case INTEGER: return new CompoundEntry<>(name, type.toSimpleType(), Helpers::parseInt, Helpers::fuzzyIntegerToString);
+				case LONG: return new CompoundEntry<>(name, type.toSimpleType(), Helpers::parseLong, Helpers::fuzzyLongToString);
+				case FLOAT: return new CompoundEntry<>(name, type.toSimpleType(), Helpers::parseFloat, Helpers::fuzzyFloatToString);
 				case DOUBLE: return new CompoundEntry<>(name, type.toSimpleType(), Helpers::parseDouble, Helpers::fuzzyDoubleToString);
 				case STRING: return new CompoundEntry<>(name, type.toSimpleType(), Helpers::parseString, Function.identity());
 				default: throw new IllegalStateException("Unsupported Type");

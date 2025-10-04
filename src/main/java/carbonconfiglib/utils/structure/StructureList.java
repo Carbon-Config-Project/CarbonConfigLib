@@ -274,6 +274,8 @@ public class StructureList
 			switch(type) {
 				case BOOLEAN: return new ListEntry<>(type.toSimpleType(), Helpers::parseBoolean, String::valueOf);
 				case INTEGER: return new ListEntry<>(type.toSimpleType(), Helpers::parseInt, Helpers::fuzzyIntegerToString);
+				case LONG: return new ListEntry<>(type.toSimpleType(), Helpers::parseLong, Helpers::fuzzyLongToString);
+				case FLOAT: return new ListEntry<>(type.toSimpleType(), Helpers::parseFloat, Helpers::fuzzyFloatToString);
 				case DOUBLE: return new ListEntry<>(type.toSimpleType(), Helpers::parseDouble, Helpers::fuzzyDoubleToString);
 				case STRING: return new ListEntry<>(type.toSimpleType(), Helpers::parseString, Function.identity());
 				default: throw new IllegalStateException("Unsupported Type");

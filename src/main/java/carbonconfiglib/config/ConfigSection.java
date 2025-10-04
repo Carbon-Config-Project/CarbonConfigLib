@@ -14,7 +14,9 @@ import carbonconfiglib.config.ConfigEntry.BoolValue;
 import carbonconfiglib.config.ConfigEntry.DoubleValue;
 import carbonconfiglib.config.ConfigEntry.EnumList;
 import carbonconfiglib.config.ConfigEntry.EnumValue;
+import carbonconfiglib.config.ConfigEntry.FloatValue;
 import carbonconfiglib.config.ConfigEntry.IntValue;
+import carbonconfiglib.config.ConfigEntry.LongValue;
 import carbonconfiglib.config.ConfigEntry.ParsedArray;
 import carbonconfiglib.config.ConfigEntry.ParsedValue;
 import carbonconfiglib.config.ConfigEntry.StringValue;
@@ -130,6 +132,22 @@ public class ConfigSection {
 	
 	public IntValue addInt(String key, int value) {
 		return add(new IntValue(key, value));
+	}
+	
+	public LongValue addLong(String key, long value, String... comment) {
+		return add(new LongValue(key, value, comment));
+	}
+	
+	public LongValue addLong(String key, long value) {
+		return add(new LongValue(key, value));
+	}
+	
+	public FloatValue addFloat(String key, float value, String... comment) {
+		return add(new FloatValue(key, value, comment));
+	}
+	
+	public FloatValue addFloat(String key, float value) {
+		return add(new FloatValue(key, value));
 	}
 	
 	public DoubleValue addDouble(String key, double value, String... comment) {
