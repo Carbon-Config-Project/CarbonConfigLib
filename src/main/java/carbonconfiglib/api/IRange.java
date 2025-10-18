@@ -13,7 +13,7 @@ public interface IRange
 		
 		public int min() { return min; }
 		public int max() { return max; }
-		public int length() { return max - min; }
+		public long length() { return (long)max - (long)min; }
 	}
 	
 	public static class LongRange implements IRange {
