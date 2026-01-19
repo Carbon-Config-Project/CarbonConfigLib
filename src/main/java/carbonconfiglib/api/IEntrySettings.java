@@ -32,6 +32,7 @@ public interface IEntrySettings {
 	public static IEntrySettings merge(IEntrySettings original, IEntrySettings toAdd) {
 		if(original == null) return toAdd;
 		if(toAdd == null) return original;
+		if(original == toAdd) return original;
 		if(original instanceof CompoundEntrySettings) {
 			((CompoundEntrySettings)original).merge(toAdd);
 			return original;
