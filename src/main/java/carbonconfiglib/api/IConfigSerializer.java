@@ -32,6 +32,7 @@ import speiger.src.collections.objects.maps.impl.hash.Object2ObjectOpenHashMap;
  * limitations under the License.
  */
 public interface IConfigSerializer<T> {
+	public static boolean ADVANCED_ERROR_LOGGING = false;
 	public T getExample();
 	public CompoundData getFormat();
 	public ParseResult<Boolean> isValid(T value);
@@ -147,7 +148,7 @@ public interface IConfigSerializer<T> {
 				return ParseResult.success(result);
 			}
 			catch(Exception e) {
-				e.printStackTrace();
+				if(ADVANCED_ERROR_LOGGING) e.printStackTrace();
 				return ParseResult.error(value.toString(), e, "Parsing of ["+example.getClass()+"] Failed");
 			}
 		}
