@@ -197,6 +197,7 @@ public class StructureCompound
 		public <T extends Enum<T>> CompoundBuilder listEnum(String name, Class<T> clz, boolean newLine) {
 			ListEntry<T> list = new ListEntry<>(EntryDataType.ENUM.toSimpleType(), E -> Helpers.parseEnum(clz, E), Enum::name);
 			list.addSuggestions(ISuggestionProvider.enums(clz));
+			list.setForced(true);
 			return start(new WrappedEditListEntry(name, list, newLine));
 		}
 		
