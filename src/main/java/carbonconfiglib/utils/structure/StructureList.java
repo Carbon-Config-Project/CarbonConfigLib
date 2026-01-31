@@ -49,6 +49,8 @@ public class StructureList
 		public boolean isNewLined() { return isNewLined; }
 		public IStructuredData getType() { return type.getType(); }
 		public IRange getRange() { return type.getRange(); }
+		public boolean isForced() { return type.isForced(); }
+		public ObjectList<ISuggestionProvider> getSuggestions() { return type.getSuggestions(); }
 		IWritableListEntry getEntry() { return (IWritableListEntry)type; }
 		
 		public ParsedList parse(String data) {
