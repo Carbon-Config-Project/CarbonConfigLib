@@ -134,7 +134,10 @@ public class Helpers {
 			}
 			builder.append(value);
 		}
-		if(builder.length() > 0) result.add(builder.toString().trim());
+		if(builder.length() > 0) {
+			String value = builder.toString().trim();
+			if(!value.isEmpty()) result.add(value);
+		}
 		
 		return trimArray(result.toArray(new String[result.size()]));
 	}

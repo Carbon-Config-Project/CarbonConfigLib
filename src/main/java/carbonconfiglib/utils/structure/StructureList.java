@@ -129,7 +129,7 @@ public class StructureList
 		static ListData build(IWritableListEntry entry, boolean newLine) { return build(entry, null, newLine); }
 		static ListData build(IWritableListEntry entry, IEntrySettings settings, boolean newLine) { return new ListBuilder(entry).setSettings(settings).build(newLine); }
 		public static ListBuilder of(EntryDataType type) { return new ListBuilder(ListEntry.create(type)); }
-		public static <T extends Enum<T>> ListBuilder enums(Class<T> clz) { return new ListBuilder(new ListEntry<>(EntryDataType.ENUM.toSimpleType(), E -> Helpers.parseEnum(clz, E), Enum::name)).addSuggestions(ISuggestionProvider.enums(clz)); }
+		public static <T extends Enum<T>> ListBuilder enums(Class<T> clz) { return new ListBuilder(new ListEntry<>(EntryDataType.ENUM.toSimpleType(), E -> Helpers.parseEnum(clz, E), Enum::name)).addSuggestions(ISuggestionProvider.enums(clz)).setForceSuggestions(true); }
 		public static <T> ListBuilder variants(EntryDataType displayType, Class<T> type, Function<String, ParseResult<T>> parse, Function<T, String> serialize) { return new ListBuilder(new ListEntry<>(SimpleData.variant(displayType, type), parse, serialize)); }
 		public static ListBuilder list(ListData data) { return new ListBuilder(new ListWrapper(data)); }
 		public static <T> ListBuilder object(CompoundData data, Function<ParsedMap, ParseResult<T>> parse, Function<T, ParsedMap> serialize) { return new ListBuilder(new CompoundWrapper<>(data, parse, serialize)); }
