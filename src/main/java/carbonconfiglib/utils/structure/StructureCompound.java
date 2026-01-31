@@ -395,13 +395,13 @@ public class StructureCompound
 		@Override
 		public IStructuredData getType() { return data; }
 		@Override
-		public boolean isForced() { return false; }
+		public boolean isForced() { return data.isForced(); }
 		@Override
 		public String getName() { return name; }
 		@Override
 		public String[] getComment() { return comments; }
 		@Override
-		public ObjectList<ISuggestionProvider> getSuggestions() { return ObjectLists.empty(); }
+		public ObjectList<ISuggestionProvider> getSuggestions() { return data.getSuggestions(); }
 		@Override
 		public IRange getRange() { return data.getRange(); }
 		
