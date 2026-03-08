@@ -73,6 +73,10 @@ public class StructureCompound
 			return new ObjectArrayList<>(entries.keySet());
 		}
 		
+		public boolean hasEntry(String key) {
+			return entries.containsKey(key);
+		}
+		
 		public ParsedMap parse(String input) {
 			return parseMap(Helpers.splitArguments(Helpers.splitCompound(input.trim()), getKeys(), false));
 		}
