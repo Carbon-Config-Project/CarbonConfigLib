@@ -6,6 +6,7 @@ import java.util.function.Consumer;
 
 import speiger.src.collections.objects.lists.ObjectArrayList;
 import speiger.src.collections.objects.maps.interfaces.Object2ObjectMap;
+import speiger.src.collections.objects.utils.ObjectLists;
 
 /**
  * Copyright 2024 Speiger, Meduris
@@ -46,6 +47,23 @@ public interface IEntrySettings {
 		}
 		return new CompoundEntrySettings(ObjectArrayList.wrap(original, toAdd));
 	}
+	
+	public static IEntrySettings copyMerge(IEntrySettings original, IEntrySettings toAdd) {
+		if(original == null) return toAdd;
+		if(toAdd == null) return original;
+		if(original == toAdd) return original;
+		if(original instanceof CompoundEntrySettings || toAdd instanceof CompoundEntrySettings) {
+			CompoundEntrySettings instance = new CompoundEntrySettings(ObjectLists.empty());
+			instance.merge(original);
+			instance.merge(toAdd);
+			return instance;
+		}
+		if(original.getClass() == toAdd.getClass()) {
+			return toAdd;
+		}
+		return new CompoundEntrySettings(ObjectArrayList.wrap(original, toAdd));
+	}
+	
 	
 	public static class CompoundEntrySettings implements IEntrySettings {
 		Map<Class<?>, IEntrySettings> settings = Object2ObjectMap.builder().map();
