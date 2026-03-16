@@ -17,33 +17,33 @@ These 3 types define the whole library.
 And you pick them based on the type you are trying to develop.    
 
 When you extend your type the following functions will have to be implemented:    
-- copy:    
+- ConfigEntry#copy:    
 	This function handles if the configentry is cloned. All Required values to make the entry operate have to be cloned.     
-- set:    
+- ConfigEntry#set:    
 	Handles the setting of the value. Used by the parser and code setting. So you have to sanitize it.     
-- canSet:    
+- ConfigEntry#canSet:    
 	Tests if the value provided fits within the spec you want it to be present. (for example if you only provide a certain range, for ints for example)     
-- getLimitations:    
+- ConfigEntry#getLimitations:    
 	(Optional) Defines limitations to the user. Stuff like a range is needed. Multiline text is supported.     
-- getPrefix:    
+- ConfigEntry#getPrefix:    
 	Used for Lazy Loading but is still required. Use a dedicated character for your type.     
-- getDataType:    
+- ConfigEntry#getDataType:    
 	Mainly used for the Gui allowing to detect what data is dealt with.    
 	For simple Types use: EntryDataType.     
 	For collections use: ListBuilder.    
 	For Complex Objects use: CompoundBuilder   
-- parseValue:    
+- ConfigEntry#parseValue:    
 	Your String -> Data function. It only does basic Data sanitization.      
 	It only ensures that the Parsed Data makes logical sense. For example if you insert a double string and try to parse an Integer it will fail.    
 	But if the Integer is negative and you only allow positive values that will not be caught here. canSet and set are used for that level of sanitization.    
-- serializedValue:   
+- ConfigEntry#serializedValue:   
 	Uses by Default: Object#toString. But this function is handling serializing the stored value itself. No sanitization needed as all setting functions ensure sanitization already.    
 	For Arrays and Collections you should also use the provided: serializeArray function. Which requires a String array. It handles everything you might need.    
-- serialize:    
+- ConfigEntry#serialize:    
 	Mainly for network sync. Writes the data into a buffer.    
 	No string serialization needed.     
 	Note for people who are new to networking: First in First out (FIFO) rules apply on the deserializeValue    
-- deserializeValue(IReadBuffer):    
+- ConfigEntry#deserializeValue(IReadBuffer):    
 	Mainly for network sync. Reads the data from a buffer.
 	No string deserialization needed.     
 	Note for people who are new to networking: First in First out (FIFO) rules apply on the serialize    
