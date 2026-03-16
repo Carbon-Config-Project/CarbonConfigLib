@@ -371,4 +371,4 @@ public static ParsedValue<TestingValue> PARSED;
 
 ## Custom Config Entries
 
-A Proper Tutorial can be found [Here](EXAMPLES.md).   
+A Proper Tutorial can be found [Here](CUSTOM.md).   
