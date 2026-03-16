@@ -53,10 +53,10 @@ This supports almost everything the config library has to offer.
 
 The lazy loading feature needs one more step.    
 Which can be approached in 2 ways.    
-- ConfigHandler#addParser(Prefix, IConfigParser):    
+- ConfigHandler#**addParser**(Prefix, IConfigParser):    
 	This function basically adds a basic parser over the config entries for lazy loading.    
 	That way you can ensure the Objects already exist when the config is created.    
-- ConfigHandler#addTempParser(Prefix):    
+- ConfigHandler#**addTempParser**(Prefix):    
 	This one is a bit more simple. It simple adds a "TempString" object into the config. Which just caches the value.    
 	When you insert your ConfigEntry it will detect the "TempString" and serialize it as you register your ConfigEntry.     
 	This is mainly done as some ConfigEntries can't be parsed immediately and have other dependencies.
