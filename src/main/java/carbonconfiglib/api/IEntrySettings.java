@@ -38,7 +38,7 @@ public interface IEntrySettings {
 			return original;
 		}
 		if(toAdd instanceof CompoundEntrySettings) {
-			((CompoundEntrySettings)original).merge(toAdd);
+			((CompoundEntrySettings)toAdd).merge(original);
 			return toAdd;
 		}
 		if(original.getClass() == toAdd.getClass()) {
