@@ -148,6 +148,7 @@ public class FileSystemWatcher {
 			WatchKey key;
 			while ((key = watchService.poll()) != null) {
 				for (WatchEvent<?> event : key.pollEvents()) {
+					if(event.kind() == StandardWatchEventKinds.OVERFLOW) continue;
 					ConfigHandler handler = configs.get(folders.get(key).resolve(((Path) event.context()).getFileName()));
 					if (handler != null && handler.reload()) {
 						onConfigChanged(handler);

@@ -176,6 +176,10 @@ public class ParsedCollections
 			return Collections.unmodifiableSet(parsed.keySet());
 		}
 		
+		public boolean hasKey(String key) {
+			return parsed.containsKey(key);
+		}
+		
 		public ParseResult<Object> validate(CompoundData data) {
 			for(String key : data.getKeys()) {
 				Object obj = parsed.get(key);
@@ -204,6 +208,15 @@ public class ParsedCollections
 				obj = ((ParseResult<Object>)obj).getValue();
 			}
 			return type.cast(obj);
+		}
+		
+		@SuppressWarnings("unchecked")
+		public <T> T getOrDefault(String key, Class<T> type, T defaultValue) {
+			Object obj = parsed.get(key);
+			if(obj instanceof ParseResult) {
+				obj = ((ParseResult<Object>)obj).getValue();
+			}
+			return type.isInstance(obj) ? type.cast(obj) : defaultValue;
 		}
 		
 		public <T> ParseResult<T> getOrError(String key, Class<T> type) {

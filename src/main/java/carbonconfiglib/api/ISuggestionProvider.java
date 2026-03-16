@@ -124,5 +124,26 @@ public interface ISuggestionProvider
 		public String getName() { return name; }
 		public String getValue() { return value; }
 		public Object getType() { return type; }
+		
+		@Override
+		public int hashCode() {
+			return value.hashCode();
+		}
+		
+		@Override
+		public boolean equals(Object obj) {
+			if(obj instanceof Suggestion) {
+				return Objects.equals(((Suggestion)obj).value, value);
+			}
+			return false;
+		}
+		
+		@Override
+		public String toString() {
+			StringBuilder builder = new StringBuilder(64);
+			builder.append("Suggestion[name=").append(name).append(", value=").append(value);
+			if(type != null) builder.append(", type=").append(type.getClass().getSimpleName());
+			return builder.append("]").toString();
+		}
 	}
 }

@@ -9,6 +9,7 @@ import java.util.function.Function;
 import carbonconfiglib.api.IEntrySettings;
 import carbonconfiglib.api.IEntrySettings.TranslatedComment;
 import carbonconfiglib.api.IEntrySettings.TranslatedKey;
+import carbonconfiglib.api.IRange;
 import carbonconfiglib.api.ISuggestionProvider;
 import carbonconfiglib.api.ISuggestionProvider.Suggestion;
 import carbonconfiglib.utils.Helpers;
@@ -19,6 +20,7 @@ import carbonconfiglib.utils.structure.IStructuredData.EntryDataType;
 import carbonconfiglib.utils.structure.IStructuredData.SimpleData;
 import carbonconfiglib.utils.structure.StructureList.CompoundWrapper;
 import carbonconfiglib.utils.structure.StructureList.IWritableListEntry;
+import carbonconfiglib.utils.structure.StructureList.ListBuilder;
 import carbonconfiglib.utils.structure.StructureList.ListData;
 import carbonconfiglib.utils.structure.StructureList.ListEntry;
 import carbonconfiglib.utils.structure.StructureList.ListWrapper;
@@ -71,6 +73,10 @@ public class StructureCompound
 			return new ObjectArrayList<>(entries.keySet());
 		}
 		
+		public boolean hasEntry(String key) {
+			return entries.containsKey(key);
+		}
+		
 		public ParsedMap parse(String input) {
 			return parseMap(Helpers.splitArguments(Helpers.splitCompound(input.trim()), getKeys(), false));
 		}
@@ -119,6 +125,11 @@ public class StructureCompound
 			return entrySettings.get(name);
 		}
 		
+		public IRange getRange(String name) {
+			ICompoundEntry entry = entries.get(name);
+			return entry == null ? null : entry.getRange();
+		}
+		
 		public String getTranslationKey(String name) {
 			IEntrySettings settings = entrySettings.get(name);
 			TranslatedKey comment = settings == null ? null : settings.get(TranslatedKey.class);
@@ -157,7 +168,7 @@ public class StructureCompound
 	
 	public static class CompoundBuilder {
 		CompoundData result = new CompoundData();
-		IWritableCompoundEntry current;
+		ICompoundEntry current;
 		
 		public CompoundBuilder simple(String name, EntryDataType type) {
 			if(type == EntryDataType.ENUM) throw new IllegalStateException("Use enums instead");
@@ -190,6 +201,7 @@ public class StructureCompound
 		public <T extends Enum<T>> CompoundBuilder listEnum(String name, Class<T> clz, boolean newLine) {
 			ListEntry<T> list = new ListEntry<>(EntryDataType.ENUM.toSimpleType(), E -> Helpers.parseEnum(clz, E), Enum::name);
 			list.addSuggestions(ISuggestionProvider.enums(clz));
+			list.setForced(true);
 			return start(new WrappedEditListEntry(name, list, newLine));
 		}
 		
@@ -206,7 +218,11 @@ public class StructureCompound
 		}
 		
 		public CompoundBuilder addSuggestions(ISuggestionProvider... providers) {
-			Objects.requireNonNull(current, "No Entry to configure").addSuggestions(providers);
+			Objects.requireNonNull(current, "No Entry to configure");
+			if(!(current instanceof IWritableCompoundEntry)) {
+				throw new UnsupportedOperationException("Entrty is read Only");
+			}
+			((IWritableCompoundEntry)current).addSuggestions(providers);
 			return this;
 		}
 		
@@ -216,7 +232,11 @@ public class StructureCompound
 		}
 		
 		public CompoundBuilder forceSuggestions(boolean value) {
-			Objects.requireNonNull(current, "No Entry to configure").setForced(value);
+			Objects.requireNonNull(current, "No Entry to configure");
+			if(!(current instanceof IWritableCompoundEntry)) {
+				throw new UnsupportedOperationException("Entrty is read Only");
+			}
+			((IWritableCompoundEntry)current).setForced(value);
 			return this;
 		}
 		
@@ -248,10 +268,20 @@ public class StructureCompound
 			return this;
 		}
 		
-		private CompoundBuilder start(IWritableCompoundEntry entry) {
-			if(current != null) result.entries.put(current.getName(), current);
+		private CompoundBuilder start(ICompoundEntry entry) {
+			ensureFinished();
 			this.current = entry;
 			return this;
+		}
+		
+		private void ensureFinished() {
+			if(current != null) {
+				if(current instanceof IBuildableCompoundEntry) {
+					current = ((IBuildableCompoundEntry)current).build();
+				}
+				result.entries.put(current.getName(), current);
+				current = null;
+			}
 		}
 		
 		public CompoundBuilder setNewLined(boolean value) {
@@ -267,11 +297,9 @@ public class StructureCompound
 			return this;
 		}
 		
+		
 		public CompoundData build() {
-			if(current != null) {
-				result.entries.put(current.getName(), current);
-				current = null;
-			}
+			ensureFinished();
 			CompoundData out = result;
 			result = null;
 			return out;
@@ -282,7 +310,9 @@ public class StructureCompound
 		public IStructuredData getType();
 		public boolean isForced();
 		public String[] getComment();
+		public void setComments(String...comments);
 		public String getName();
+		public IRange getRange();
 		public void parse(Map<String, String> data, ParsedMap output);
 		public void serialize(ParsedMap input, Map<String, String> output, boolean allowMultiline, int indent);
 		public ObjectList<ISuggestionProvider> getSuggestions();
@@ -291,10 +321,14 @@ public class StructureCompound
 	static interface IWritableCompoundEntry extends ICompoundEntry {
 		public void setForced(boolean value);
 		public void addSuggestions(ISuggestionProvider... providers);
-		public void setComments(String...comments);
+		public void withRange(IRange range);
 	}
 	
-	static class WrappedEditListEntry implements IWritableCompoundEntry {
+	static interface IBuildableCompoundEntry {
+		public ICompoundEntry build();
+	}
+	
+	static class WrappedEditListEntry implements IWritableCompoundEntry, IBuildableCompoundEntry {
 		String name;
 		String[] comments;
 		IWritableListEntry entry;
@@ -314,6 +348,10 @@ public class StructureCompound
 		public String[] getComment() { return comments; }
 		@Override
 		public String getName() { return name; }
+		@Override
+		public ObjectList<ISuggestionProvider> getSuggestions() { return entry.getSuggestions(); }
+		@Override
+		public IRange getRange() { return entry.getRange(); }
 		
 		@Override
 		public void parse(Map<String, String> input, ParsedMap output) {
@@ -330,16 +368,20 @@ public class StructureCompound
 		}
 		
 		@Override
-		public ObjectList<ISuggestionProvider> getSuggestions() { return entry.getSuggestions(); }
-		@Override
 		public void setForced(boolean value) { entry.setForced(value); }
+		@Override
+		public void withRange(IRange range) { entry.withRange(range); }
 		@Override
 		public void addSuggestions(ISuggestionProvider... providers) { entry.addSuggestions(providers); }
 		@Override
 		public void setComments(String... comments) { this.comments = comments; }
+		
+		public ICompoundEntry build() {
+			return new WrappedListEntry(name, comments, ListBuilder.build(entry, newLine));
+		}
 	}
 	
-	static class WrappedListEntry implements IWritableCompoundEntry {
+	static class WrappedListEntry implements ICompoundEntry {
 		String name;
 		String[] comments;
 		ListData data;
@@ -349,14 +391,25 @@ public class StructureCompound
 			this.data = data;
 		}
 		
+		public WrappedListEntry(String name, String[] comments, ListData data) {
+			this.name = name;
+			this.comments = comments;
+			this.data = data;
+		}
+		
 		@Override
 		public IStructuredData getType() { return data; }
 		@Override
-		public boolean isForced() { return false; }
+		public boolean isForced() { return data.isForced(); }
 		@Override
 		public String getName() { return name; }
 		@Override
 		public String[] getComment() { return comments; }
+		@Override
+		public ObjectList<ISuggestionProvider> getSuggestions() { return data.getSuggestions(); }
+		@Override
+		public IRange getRange() { return data.getRange(); }
+		
 		@Override
 		public void parse(Map<String, String> input, ParsedMap output) {
 			output.put(name, ParsedList.unwrap(data.parse(input.getOrDefault(name, ""))));
@@ -366,18 +419,11 @@ public class StructureCompound
 		public void serialize(ParsedMap input, Map<String, String> output, boolean allowMultiline, int indent) {
 			output.put(name, data.serialize(input.get(name, ParsedList.class), allowMultiline, indent));
 		}
-		
-		@Override
-		public ObjectList<ISuggestionProvider> getSuggestions() { return ObjectLists.empty(); }
-		@Override
-		public void setForced(boolean value) { throw new UnsupportedOperationException("Not supported for nested wrappers"); }
-		@Override
-		public void addSuggestions(ISuggestionProvider... providers) { throw new UnsupportedOperationException("Not supported for nested wrappers"); }
 		@Override
 		public void setComments(String... comments) { this.comments = comments; }
 	}
 	
-	static class WrappedCompoundEntry<T> implements IWritableCompoundEntry {
+	static class WrappedCompoundEntry<T> implements ICompoundEntry {
 		String name;
 		String[] comments;
 		CompoundData data;
@@ -400,6 +446,10 @@ public class StructureCompound
 		@Override
 		public String[] getComment() { return comments; }
 		@Override
+		public ObjectList<ISuggestionProvider> getSuggestions() { return ObjectLists.empty(); }
+		@Override
+		public IRange getRange() { return null; }
+		@Override
 		public void parse(Map<String, String> input, ParsedMap output) {
 			output.put(name, parse.apply(data.parse(input.getOrDefault(name, ""))));
 		}
@@ -409,12 +459,6 @@ public class StructureCompound
 			output.put(name, data.serialize(serialize.apply(input.getUnsafe(name)), allowMultiline, indent));
 		}
 		
-		@Override
-		public ObjectList<ISuggestionProvider> getSuggestions() { return ObjectLists.empty(); }
-		@Override
-		public void setForced(boolean value) { throw new UnsupportedOperationException("Not supported for nested wrappers"); }
-		@Override
-		public void addSuggestions(ISuggestionProvider... providers) { throw new UnsupportedOperationException("Not supported for nested wrappers"); }
 		@Override
 		public void setComments(String... comments) { this.comments = comments; }
 	}
@@ -427,6 +471,7 @@ public class StructureCompound
 		final String name;
 		String[] comments;
 		boolean forcedSuggestions;
+		IRange range;
 		
 		public CompoundEntry(String name, IStructuredData type, Function<String, ParseResult<T>> parse, Function<T, String> serialize) {
 			this.name = name;
@@ -446,10 +491,13 @@ public class StructureCompound
 		@Override
 		public ObjectList<ISuggestionProvider> getSuggestions() { return providers.unmodifiable(); }
 		@Override
+		public IRange getRange() { return range; }
+		@Override
 		public void parse(Map<String, String> data, ParsedMap output) { output.put(name, parse.apply(data.getOrDefault(name, ""))); }
 		@Override
 		public void serialize(ParsedMap input, Map<String, String> output, boolean allowMultiline, int indent) { output.put(name, serialize.apply(input.getUnsafe(name))); }
-		
+		@Override
+		public void withRange(IRange range) { this.range = range; }
 		@Override
 		public void setForced(boolean value) { this.forcedSuggestions = value; }
 		@Override
@@ -461,6 +509,8 @@ public class StructureCompound
 			switch(type) {
 				case BOOLEAN: return new CompoundEntry<>(name, type.toSimpleType(), Helpers::parseBoolean, String::valueOf);
 				case INTEGER: return new CompoundEntry<>(name, type.toSimpleType(), Helpers::parseInt, Helpers::fuzzyIntegerToString);
+				case LONG: return new CompoundEntry<>(name, type.toSimpleType(), Helpers::parseLong, Helpers::fuzzyLongToString);
+				case FLOAT: return new CompoundEntry<>(name, type.toSimpleType(), Helpers::parseFloat, Helpers::fuzzyFloatToString);
 				case DOUBLE: return new CompoundEntry<>(name, type.toSimpleType(), Helpers::parseDouble, Helpers::fuzzyDoubleToString);
 				case STRING: return new CompoundEntry<>(name, type.toSimpleType(), Helpers::parseString, Function.identity());
 				default: throw new IllegalStateException("Unsupported Type");

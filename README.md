@@ -54,6 +54,7 @@ The register function, unless differently specified, automatically loads the con
 
 A simple example can be found [Here](src/test/java/carbonconfiglib/SimpleTest.java)   
 A more extensive example/explanation list can be found [Here](EXAMPLES.md)    
+If you want to implement custom data types a tutorial can be found [here](CUSTOM.md).   
 
 
 ## Features

@@ -5,6 +5,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 
 import carbonconfiglib.api.IEntrySettings;
+import carbonconfiglib.api.IRange;
 import carbonconfiglib.api.ISuggestionProvider;
 import carbonconfiglib.api.ISuggestionProvider.Suggestion;
 import carbonconfiglib.utils.Helpers;
@@ -47,6 +48,9 @@ public class StructureList
 		public ListData asList() { return this; }
 		public boolean isNewLined() { return isNewLined; }
 		public IStructuredData getType() { return type.getType(); }
+		public IRange getRange() { return type.getRange(); }
+		public boolean isForced() { return type.isForced(); }
+		public ObjectList<ISuggestionProvider> getSuggestions() { return type.getSuggestions(); }
 		IWritableListEntry getEntry() { return (IWritableListEntry)type; }
 		
 		public ParsedList parse(String data) {
@@ -122,8 +126,10 @@ public class StructureList
 			return output;
 		}
 		
+		static ListData build(IWritableListEntry entry, boolean newLine) { return build(entry, null, newLine); }
+		static ListData build(IWritableListEntry entry, IEntrySettings settings, boolean newLine) { return new ListBuilder(entry).setSettings(settings).build(newLine); }
 		public static ListBuilder of(EntryDataType type) { return new ListBuilder(ListEntry.create(type)); }
-		public static <T extends Enum<T>> ListBuilder enums(Class<T> clz) { return new ListBuilder(new ListEntry<>(EntryDataType.ENUM.toSimpleType(), E -> Helpers.parseEnum(clz, E), Enum::name)).addSuggestions(ISuggestionProvider.enums(clz)); }
+		public static <T extends Enum<T>> ListBuilder enums(Class<T> clz) { return new ListBuilder(new ListEntry<>(EntryDataType.ENUM.toSimpleType(), E -> Helpers.parseEnum(clz, E), Enum::name)).addSuggestions(ISuggestionProvider.enums(clz)).setForceSuggestions(true); }
 		public static <T> ListBuilder variants(EntryDataType displayType, Class<T> type, Function<String, ParseResult<T>> parse, Function<T, String> serialize) { return new ListBuilder(new ListEntry<>(SimpleData.variant(displayType, type), parse, serialize)); }
 		public static ListBuilder list(ListData data) { return new ListBuilder(new ListWrapper(data)); }
 		public static <T> ListBuilder object(CompoundData data, Function<ParsedMap, ParseResult<T>> parse, Function<T, ParsedMap> serialize) { return new ListBuilder(new CompoundWrapper<>(data, parse, serialize)); }
@@ -132,6 +138,7 @@ public class StructureList
 	public static interface IListEntry {
 		public IStructuredData getType();
 		public boolean isForced();
+		public IRange getRange();
 		public void parse(List<String> input, ParsedList output);
 		public void serialize(ParsedList input, List<String> output, boolean allowMultine, int indent);
 		public ObjectList<ISuggestionProvider> getSuggestions();
@@ -140,6 +147,7 @@ public class StructureList
 	static interface IWritableListEntry extends IListEntry {
 		public void setForced(boolean value);
 		public void addSuggestions(ISuggestionProvider... providers);
+		public void withRange(IRange range);
 	}
 	
 	static class CompoundWrapper<T> implements IWritableListEntry {
@@ -158,6 +166,11 @@ public class StructureList
 		@Override
 		public boolean isForced() { return false; }
 		@Override
+		public ObjectList<ISuggestionProvider> getSuggestions() { return ObjectLists.empty(); }
+		@Override
+		public IRange getRange() { return null; }
+		
+		@Override
 		public void parse(List<String> input, ParsedList output) {
 			for(int i = 0,m=input.size();i<m;i++) {
 				output.add(parse.apply(data.parse(input.get(i))));
@@ -172,11 +185,11 @@ public class StructureList
 		}
 
 		@Override
-		public ObjectList<ISuggestionProvider> getSuggestions() { return ObjectLists.empty(); }
-		@Override
 		public void setForced(boolean value) { throw new UnsupportedOperationException("Not supported for nested wrappers"); }
 		@Override
 		public void addSuggestions(ISuggestionProvider... providers) { throw new UnsupportedOperationException("Not supported for nested wrappers"); }
+		@Override
+		public void withRange(IRange range) { throw new UnsupportedOperationException("Not supported for nested wrappers"); }
 	}
 	
 	static class ListWrapper implements IWritableListEntry {
@@ -190,6 +203,10 @@ public class StructureList
 		public IStructuredData getType() { return data; }
 		@Override
 		public boolean isForced() { return false; }
+		@Override
+		public IRange getRange() { return null; }
+		@Override
+		public ObjectList<ISuggestionProvider> getSuggestions() { return ObjectLists.empty(); }
 		@Override
 		public void parse(List<String> input, ParsedList output) {
 			for(int i = 0,m=input.size();i<m;i++) {
@@ -205,11 +222,11 @@ public class StructureList
 		}
 
 		@Override
-		public ObjectList<ISuggestionProvider> getSuggestions() { return ObjectLists.empty(); }
-		@Override
 		public void setForced(boolean value) { throw new UnsupportedOperationException("Not supported for nested wrappers"); }
 		@Override
 		public void addSuggestions(ISuggestionProvider... providers) { throw new UnsupportedOperationException("Not supported for nested wrappers"); }
+		@Override
+		public void withRange(IRange range) { throw new UnsupportedOperationException("Not supported for nested wrappers"); }
 	}
 	
 	static class ListEntry<T> implements IWritableListEntry {
@@ -218,6 +235,7 @@ public class StructureList
 		final Function<T, String> serialize;
 		final IStructuredData type;
 		boolean forcedSuggestions;
+		IRange range;
 		
 		public ListEntry(IStructuredData type, Function<String, ParseResult<T>> parse, Function<T, String> serialize) {
 			this.type = type;
@@ -231,6 +249,10 @@ public class StructureList
 		public boolean isForced() { return forcedSuggestions; }
 		@Override
 		public ObjectList<ISuggestionProvider> getSuggestions() { return providers.unmodifiable(); }
+		@Override
+		public IRange getRange() { return range; }
+
+		
 		@Override
 		public void parse(List<String> input, ParsedList output) {
 			for(int i = 0,m=input.size();i<m;i++) {
@@ -249,11 +271,15 @@ public class StructureList
 		public void setForced(boolean value) { this.forcedSuggestions = value; }
 		@Override
 		public void addSuggestions(ISuggestionProvider... providers) { this.providers.addAll(providers); }
+		@Override
+		public void withRange(IRange range) { this.range = range; }
 
 		static ListEntry<?> create(EntryDataType type) {
 			switch(type) {
 				case BOOLEAN: return new ListEntry<>(type.toSimpleType(), Helpers::parseBoolean, String::valueOf);
 				case INTEGER: return new ListEntry<>(type.toSimpleType(), Helpers::parseInt, Helpers::fuzzyIntegerToString);
+				case LONG: return new ListEntry<>(type.toSimpleType(), Helpers::parseLong, Helpers::fuzzyLongToString);
+				case FLOAT: return new ListEntry<>(type.toSimpleType(), Helpers::parseFloat, Helpers::fuzzyFloatToString);
 				case DOUBLE: return new ListEntry<>(type.toSimpleType(), Helpers::parseDouble, Helpers::fuzzyDoubleToString);
 				case STRING: return new ListEntry<>(type.toSimpleType(), Helpers::parseString, Function.identity());
 				default: throw new IllegalStateException("Unsupported Type");

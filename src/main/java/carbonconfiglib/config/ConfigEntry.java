@@ -15,6 +15,10 @@ import carbonconfiglib.api.IEntrySettings;
 import carbonconfiglib.api.IEntrySettings.TranslatedComment;
 import carbonconfiglib.api.IEntrySettings.TranslatedKey;
 import carbonconfiglib.api.ILimitationSerializer;
+import carbonconfiglib.api.IRange.DoubleRange;
+import carbonconfiglib.api.IRange.FloatRange;
+import carbonconfiglib.api.IRange.IntegerRange;
+import carbonconfiglib.api.IRange.LongRange;
 import carbonconfiglib.api.IReloadMode;
 import carbonconfiglib.api.ISuggestionProvider;
 import carbonconfiglib.api.ISuggestionProvider.Suggestion;
@@ -61,6 +65,7 @@ public abstract class ConfigEntry<T> {
 	private boolean forcedSuggestions = false;
 	private IReloadMode reload = null;
 	private IEntrySettings settings = null;
+	private IConfigSelector<T> selector = null;
 	private SyncedConfig<ConfigEntry<T>> syncCache;
 	private List<ISuggestionProvider> providers = new ObjectArrayList<>();
 
@@ -96,6 +101,8 @@ public abstract class ConfigEntry<T> {
 		copy.providers.addAll(providers);
 		copy.hidden = hidden;
 		copy.wasLoaded = wasLoaded;
+		copy.forcedSuggestions = forcedSuggestions;
+		copy.selector = selector;
 		copy.reload = reload;
 		copy.settings = settings;
 		return copy;
@@ -120,6 +127,10 @@ public abstract class ConfigEntry<T> {
 	
 	public ParseResult<Boolean> canSet(T value) {
 		return ParseResult.result(value != null, NullPointerException::new, "Value isn't allowed to be null");
+	}
+	
+	protected ParseResult<Boolean> canSelect(T value) {
+		return selector == null ? ParseResult.success(true) : selector.isValid(value);
 	}
 	
 	public ConfigEntry<T> set(T value) {
@@ -149,6 +160,11 @@ public abstract class ConfigEntry<T> {
 		List<Suggestion> suggestions = new ObjectArrayList<>();
 		for(ISuggestionProvider provider : this.providers) {
 			provider.provideSuggestions(T -> addInternal(T, suggestions), filter);
+		}
+		if(suggestions.isEmpty() && selector != null) {
+			for(T value : selector.getValidValues()) {
+				addInternal(Suggestion.value(serializedValue(MultilinePolicy.DISABLED, value)), suggestions);
+			}
 		}
 		return suggestions;
 	}
@@ -247,6 +263,13 @@ public abstract class ConfigEntry<T> {
 	}
 	
 	@SuppressWarnings("unchecked")
+	public final <S extends ConfigEntry<T>> S setSelection(IConfigSelector<T> selector) {
+		this.selector = selector;
+		forcedSuggestions = true;
+		return (S)this;
+	}
+	
+	@SuppressWarnings("unchecked")
 	public final <S extends ConfigEntry<T>> S setRequiredReload(IReloadMode mode) {
 		this.reload = mode;
 		return (S)this;
@@ -296,6 +319,7 @@ public abstract class ConfigEntry<T> {
 	public ParseResult<String> deserializeValue(String value) {
 		ParseResult<T> result = parseValue(value);
 		if(result.hasError()) return result.withDefault(value);
+		if(!canSet(result.getValue()).getValue()) return result.withDefault(value);
 		set(result.getValue());
 		setLoaded();
 		return ParseResult.success(value);
@@ -361,6 +385,9 @@ public abstract class ConfigEntry<T> {
 		if(settings != null) {
 			settings.forEachType(ILimitationSerializer.class, T -> appendLimitation(T.getLimitation(), builder, indentation));
 		}
+		if(selector != null) {
+			appendLimitation(selector.getLimitation(), builder, indentation);
+		}
 		builder.append(indentation);
 		builder.append(getPrefix());
 		builder.append(':');
@@ -405,6 +432,13 @@ public abstract class ConfigEntry<T> {
 			super(key, defaultValue, comment);
 		}
 		
+		@Override
+		public ParseResult<Boolean> canSet(T value) {
+			ParseResult<Boolean> result = super.canSet(value);
+			if(result.hasError()) return result;
+			return canSelect(value);
+		}
+		
 		@SuppressWarnings("unchecked")
 		public final <S extends BasicConfigEntry<T>> S addSuggestions(T... values) {
 			List<Suggestion> suggestions = new ObjectArrayList<>();
@@ -439,6 +473,13 @@ public abstract class ConfigEntry<T> {
 		
 		public <K, V> MappedConfig<K, V> createdMappedConfig(ConfigHandler handler, Function<T, K> keyGenerator, Function<T, V> valueGenerator) {
 			return MappedConfig.create(handler, this, keyGenerator, valueGenerator);
+		}
+		
+		@Override
+		public ParseResult<Boolean> canSet(T[] value) {
+			ParseResult<Boolean> result = super.canSet(value);
+			if(result.hasError()) return result;
+			return canSelect(value);
 		}
 		
 		@SuppressWarnings("unchecked")
@@ -482,6 +523,13 @@ public abstract class ConfigEntry<T> {
 		
 		public <K, V> MappedConfig<K, V> createdMappedConfig(ConfigHandler handler, Function<T, K> keyGenerator, Function<T, V> valueGenerator) {
 			return MappedConfig.create(handler, this, keyGenerator, valueGenerator);
+		}
+		
+		@Override
+		public ParseResult<Boolean> canSet(E value) {
+			ParseResult<Boolean> result = super.canSet(value);
+			if(result.hasError()) return result;
+			return canSelect(value);
 		}
 		
 		@SuppressWarnings("unchecked")
@@ -585,7 +633,7 @@ public abstract class ConfigEntry<T> {
 		
 		@Override
 		public SimpleData getDataType() {
-			return EntryDataType.INTEGER.toSimpleType();
+			return EntryDataType.INTEGER.withRange(new IntegerRange(min, max));
 		}
 		
 		public int get() {
@@ -611,6 +659,210 @@ public abstract class ConfigEntry<T> {
 		@Override
 		public void deserializeValue(IReadBuffer buffer) {
 			set(buffer.readInt());
+		}
+	}
+	
+	public static class LongValue extends BasicConfigEntry<Long> {
+		private long min = Long.MIN_VALUE;
+		private long max = Long.MAX_VALUE;
+		
+		public LongValue(String key, Long defaultValue, String... comment) {
+			super(key, defaultValue, comment);
+		}
+		
+		public LongValue(String key, Long defaultValue) {
+			super(key, defaultValue);
+		}
+		
+		public LongValue setMin(long min) {
+			this.min = min;
+			return this;
+		}
+		
+		public LongValue setMax(long max) {
+			this.max = max;
+			return this;
+		}
+		
+		public LongValue setRange(long min, long max) {
+			this.min = min;
+			this.max = max;
+			return this;
+		}
+		
+		public long getMin() {
+			return min; 
+		}
+		
+		public long getMax() {
+			return max;
+		}
+		
+		@Override
+		protected LongValue copy() {
+			return new LongValue(getKey(), getDefault(), getComment()).setRange(min, max);
+		}
+		
+		@Override
+		public LongValue set(Long value) {
+			super.set(Helpers.clamp(value, min, max));
+			return this;
+		}
+		
+		@Override
+		public ParseResult<Boolean> canSet(Long value) {
+			ParseResult<Boolean> result = super.canSet(value);
+			if(result.hasError()) return result;
+			return ParseResult.result(value >= min && value <= max, IllegalArgumentException::new, "Value ["+value+"] has to be within ["+min+" ~ "+max+"]");
+		}
+		
+		@Override
+		public String getLimitations() {
+			if(min == Long.MIN_VALUE) {
+				if(max == Long.MAX_VALUE) return "";
+				return "Range: < "+max;
+			}
+			if(max == Long.MAX_VALUE) {
+				return "Range: > "+min;
+			}
+			return "Range: "+min+" ~ "+max;
+		}
+		
+		@Override
+		public char getPrefix() {
+			return 'L';
+		}
+		
+		@Override
+		public SimpleData getDataType() {
+			return EntryDataType.LONG.withRange(new LongRange(min, max));
+		}
+		
+		public long get() {
+			return getValue().longValue();
+		}
+		
+		@Override
+		public ParseResult<Long> parseValue(String value) {
+			return Helpers.parseLong(value);
+		}
+		
+		public static ParseResult<LongValue> parse(String key, String value, String... comment) {
+			ParseResult<Long> result = Helpers.parseLong(value);
+			if (result.hasError()) return result.withDefault(new LongValue(key, 0L, comment));
+			return ParseResult.success(new LongValue(key, result.getValue(), comment));
+		}
+
+		@Override
+		public void serialize(IWriteBuffer buffer) {
+			buffer.writeLong(get());
+		}
+
+		@Override
+		public void deserializeValue(IReadBuffer buffer) {
+			set(buffer.readLong());
+		}
+	}
+	
+	public static class FloatValue extends BasicConfigEntry<Float> {
+		private float min = -Float.MAX_VALUE;
+		private float max = Float.MAX_VALUE;
+		
+		public FloatValue(String key, Float defaultValue, String... comment) {
+			super(key, defaultValue, comment);
+		}
+		
+		public FloatValue(String key, Float defaultValue) {
+			super(key, defaultValue);
+		}
+		
+		public FloatValue setMin(float min) {
+			this.min = min;
+			return this;
+		}
+		
+		public FloatValue setMax(float max) {
+			this.max = max;
+			return this;
+		}
+		
+		public FloatValue setRange(float min, float max) {
+			this.min = min;
+			this.max = max;
+			return this;
+		}
+		
+		public float getMin() {
+			return min;
+		}
+		
+		public float getMax() {
+			return max;
+		}
+		
+		@Override
+		protected FloatValue copy() {
+			return new FloatValue(getKey(), getDefault(), getComment()).setRange(min, max);
+		}
+		
+		@Override
+		public ParseResult<Boolean> canSet(Float value) {
+			ParseResult<Boolean> result = super.canSet(value);
+			if(result.hasError()) return result;
+			return ParseResult.result(value >= min && value <= max, IllegalArgumentException::new, "Value ["+value+"] has to be within ["+min+" ~ "+max+"]");
+		}
+		
+		@Override
+		public FloatValue set(Float value) {
+			super.set(Helpers.clamp(value, min, max));
+			return this;
+		}
+		
+		@Override
+		public char getPrefix() {
+			return 'F';
+		}
+		
+		@Override
+		public SimpleData getDataType() {
+			return EntryDataType.FLOAT.withRange(new FloatRange(min, max));
+		}
+		
+		public float get() {
+			return getValue().floatValue();
+		}
+		
+		@Override
+		public String getLimitations() {
+			if(min == -Float.MAX_VALUE) {
+				if(max == Float.MAX_VALUE) return "";
+				return "Range: < "+max;
+			}
+			if(max == Float.MAX_VALUE) {
+				return "Range: > "+min;
+			}
+			return "Range: "+min+" ~ "+max;
+		}
+		
+		@Override
+		public ParseResult<Float> parseValue(String value) {
+			return Helpers.parseFloat(value);
+		}
+		
+		public static ParseResult<FloatValue> parse(String key, String value, String... comment) {
+			ParseResult<Float> result = Helpers.parseFloat(value);
+			if (result.hasError()) return result.withDefault(new FloatValue(key, 0F, comment));
+			return ParseResult.success(new FloatValue(key, result.getValue(), comment));
+		}
+		
+		@Override
+		public void serialize(IWriteBuffer buffer) {
+			buffer.writeFloat(get());
+		}
+		
+		@Override
+		public void deserializeValue(IReadBuffer buffer) {
+			set(buffer.readFloat());
 		}
 	}
 	
@@ -675,7 +927,7 @@ public abstract class ConfigEntry<T> {
 		
 		@Override
 		public SimpleData getDataType() {
-			return EntryDataType.DOUBLE.toSimpleType();
+			return EntryDataType.DOUBLE.withRange(new DoubleRange(min, max));
 		}
 		
 		public double get() {
@@ -838,7 +1090,8 @@ public abstract class ConfigEntry<T> {
 		
 		@Override
 		public ParseResult<Boolean> canSet(String value) {
-			if(value == null) return ParseResult.partial(false, NullPointerException::new, "Value isn't allowed to be null");
+			ParseResult<Boolean> result = super.canSet(value);
+			if(result.hasError()) return result;
 			if(filter == null || filter.test(value)) return ParseResult.success(true);
 			return ParseResult.partial(false, IllegalStateException::new, "Value ["+value+"] isn't valid");
 		}
@@ -888,7 +1141,7 @@ public abstract class ConfigEntry<T> {
 		}
 		
 		public Predicate<String> getFilter() {
-			return filter; 
+			return filter;
 		}
 		
 		@Override
@@ -917,7 +1170,8 @@ public abstract class ConfigEntry<T> {
 		
 		@Override
 		public ParseResult<Boolean> canSet(String[] value) {
-			if(value == null) return ParseResult.partial(false, NullPointerException::new, "Value isn't allowed to be null");
+			ParseResult<Boolean> other = super.canSet(value);
+			if(other.hasError()) return other;
 			if(filter == null) return ParseResult.success(true);
 			for(int i = 0,m=value.length;i<m;i++) {
 				if(!filter.test(value[i])) return ParseResult.partial(false, IllegalStateException::new, "Value ["+value[i]+"] isn't valid");
@@ -964,6 +1218,7 @@ public abstract class ConfigEntry<T> {
 			super(key, defaultValue, comment);
 			this.enumClass = enumClass;
 			addSuggestionProvider(ISuggestionProvider.enums(enumClass));
+			setSelection(IConfigSelector.list(enumClass.getEnumConstants()));
 			forceSuggestions(true);
 		}
 		
@@ -971,6 +1226,7 @@ public abstract class ConfigEntry<T> {
 			super(key, defaultValue);
 			this.enumClass = enumClass;
 			addSuggestionProvider(ISuggestionProvider.enums(enumClass));
+			setSelection(IConfigSelector.list(enumClass.getEnumConstants()));
 			forceSuggestions(true);
 		}
 		
@@ -1004,7 +1260,8 @@ public abstract class ConfigEntry<T> {
 		
 		@Override
 		public ParseResult<Boolean> canSet(List<E> value) {
-			if(value == null) return ParseResult.partial(false, NullPointerException::new, "Value isn't allowed to be null");
+			ParseResult<Boolean> other = super.canSet(value);
+			if(other.hasError()) return other;
 			for(int i = 0,m=value.size();i<m;i++) {
 				E entry = value.get(i);
 				if(entry == null) return ParseResult.partial(false, NullPointerException::new, "Value isn't allowed to be null");
@@ -1030,7 +1287,7 @@ public abstract class ConfigEntry<T> {
 
 		@Override
 		public String getLimitations() {
-			return "Must be one of " + Arrays.toString(Helpers.toArray(enumClass));
+			return "";
 		}
 
 		@Override
@@ -1059,6 +1316,7 @@ public abstract class ConfigEntry<T> {
 			super(key, defaultValue, comment);
 			this.enumClass = enumClass;
 			addSuggestionProvider(ISuggestionProvider.enums(enumClass));
+			setSelection(IConfigSelector.simple(enumClass.getEnumConstants()));
 			forceSuggestions(true);
 		}
 		
@@ -1066,6 +1324,7 @@ public abstract class ConfigEntry<T> {
 			super(key, defaultValue);
 			this.enumClass = enumClass;
 			addSuggestionProvider(ISuggestionProvider.enums(enumClass));
+			setSelection(IConfigSelector.simple(enumClass.getEnumConstants()));
 			forceSuggestions(true);
 		}
 		
@@ -1091,6 +1350,8 @@ public abstract class ConfigEntry<T> {
 		
 		@Override
 		public ParseResult<Boolean> canSet(E value) {
+			ParseResult<Boolean> result = super.canSet(value);
+			if(result.hasError()) return result;
 			return ParseResult.result(enumClass.isInstance(value), IllegalArgumentException::new, "Value must be one of the following: "+Arrays.toString(Helpers.toArray(enumClass)));
 		}
 		
@@ -1100,9 +1361,8 @@ public abstract class ConfigEntry<T> {
 		
 		@Override
 		public String getLimitations() {
-			return "Must be one of " + Arrays.toString(Helpers.toArray(enumClass));
+			return "";
 		}
-
 		
 		@Override
 		public ParseResult<E> parseValue(String value) {
@@ -1230,7 +1490,8 @@ public abstract class ConfigEntry<T> {
 		
 		@Override
 		public ParseResult<Boolean> canSet(List<T> value) {
-			if(value == null) return ParseResult.partial(false, NullPointerException::new, "Value isn't allowed to be null");
+			ParseResult<Boolean> other = super.canSet(value);
+			if(other.hasError()) return other;
 			for(int i = 0,m=value.size();i<m;i++) {
 				T entry = value.get(i);
 				if(entry == null) return ParseResult.partial(false, NullPointerException::new, "Value isn't allowed to be null");
