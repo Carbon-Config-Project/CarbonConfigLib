@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import carbonconfiglib.utils.ParseResult;
 import speiger.src.collections.objects.lists.ObjectArrayList;
@@ -98,7 +99,7 @@ public interface IConfigSelector<T>
 		
 		@Override
 		public List<T[]> getValidValues() {
-			return values.stream().sorted(sorter).map(this::toArray).toList();
+			return values.stream().sorted(sorter).map(this::toArray).collect(Collectors.toList());
 		}
 		
 		@SuppressWarnings("unchecked")
@@ -133,7 +134,7 @@ public interface IConfigSelector<T>
 		
 		@Override
 		public List<List<T>> getValidValues() {
-			return values.stream().sorted(sorter).map(Collections::singletonList).toList();
+			return values.stream().sorted(sorter).map(Collections::singletonList).collect(Collectors.toList());
 		}
 		
 		@Override
